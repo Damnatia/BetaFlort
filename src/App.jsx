@@ -53,18 +53,33 @@ function buildHourlyOnlineMap(profiles, hourKey) {
 export default function App() {
   const [status, setStatus] = useState('');
 
-  const {
-    mode,
-    setMode,
-    authForm,
-    setAuthForm,
-    loading,
-    memberSession,
-    isAdmin,
-    signIn,
-    signUp,
-    signOut,
-  } = useAuth({ adminPasswords: [ADMIN_PASSWORD, ADMIN_PASSWORD2], setStatus });
+  const { user: memberSession, loading: authLoading, signIn: supabaseSignIn, signUp: supabaseSignUp, signOut: supabaseSignOut } = useAuth();
+  
+  const [mode, setMode] = useState('user');
+  const [authForm, setAuthForm] = useState({ email: '', password: '' });
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  const loading = authLoading; // Eski loading değişkenini bozmamak için
+
+  async function handleSignIn() {
+    if (mode === 'admin') {
+      if ([ADMIN_PASSWORD, ADMIN_PASSWORD2].includes(authForm.password)) {
+        setIsAdmin(true);
+        setStatus('Admin girişi başarılı.');
+      } else {
+        setStatus('Admin şifresi hatalı.');
+      }
+      return;
+    }
+    if (!authForm.email || !authForm.password) return setStatus('E-posta ve şifre gerekli.');
+    await supabaseSignIn(authForm.email, authForm.password);
+  }
+
+  async function handleSignUp() {
+    if (mode === 'admin') return setStatus('Admin kayıt olamaz.');
+    if (!authForm.email || !authForm.password) return setStatus('E-posta ve şifre gerekli.');
+    await supabaseSignUp(authForm.email, authForm.password);
+  }
 
   const [virtualProfiles, setVirtualProfiles] = useState([]);
   const [selectedProfileId, setSelectedProfileId] = useState(null);
@@ -738,17 +753,23 @@ export default function App() {
     setStatus('Test satın alma başarılı: 5000 jeton yüklendi.');
   }
 
-  function handleSignOut() {
-    signOut(() => {
-      setSelectedProfileId(null);
-      setMessages([]);
-      setIncomingThreads([]);
-      setSelectedThread(null);
-      setUnreadByProfile({});
-      setAdminUnreadByThread({});
-      setTypingLabel('');
-      setUserView('discover');
-    });
+ async function handleSignOut() {
+    if (isAdmin) {
+      setIsAdmin(false);
+      setStatus('Admin çıkışı yapıldı.');
+    } else {
+      await supabaseSignOut();
+    }
+    
+    // UI State'lerini sıfırla
+    setSelectedProfileId(null);
+    setMessages([]);
+    setIncomingThreads([]);
+    setSelectedThread(null);
+    setUnreadByProfile({});
+    setAdminUnreadByThread({});
+    setTypingLabel('');
+    setUserView('discover');
   }
 
   async function fetchVirtualProfiles() {
@@ -1483,13 +1504,13 @@ export default function App() {
                 <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 transition-all focus-within:border-fuchsia-400 focus-within:shadow-lg focus-within:shadow-fuchsia-500/15">
                   <span className="text-lg text-slate-500">👤</span>
                   <input
-                    type="text"
-                    placeholder={mode === 'admin' ? 'Admin modunda kullanıcı adı kapalı' : 'Kullanıcı adı'}
-                    disabled={mode === 'admin'}
-                    value={mode === 'admin' ? '' : authForm.username}
-                    onChange={(e) => setAuthForm((st) => ({ ...st, username: e.target.value }))}
-                    className="flex-1 bg-transparent py-2 text-sm text-slate-900 placeholder:text-slate-400 outline-none disabled:cursor-not-allowed disabled:text-slate-400"
-                  />
+  type={mode === 'admin' ? 'text' : 'email'}
+  placeholder={mode === 'admin' ? 'Admin modunda e-posta kapalı' : 'E-posta adresi'}
+  disabled={mode === 'admin'}
+  value={mode === 'admin' ? '' : authForm.email}
+  onChange={(e) => setAuthForm((st) => ({ ...st, email: e.target.value }))}
+  className="flex-1 bg-transparent py-2 text-sm text-slate-900 placeholder:text-slate-400 outline-none disabled:cursor-not-allowed disabled:text-slate-400"
+/>
                 </div>
 
                 <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 transition-all focus-within:border-cyan-400 focus-within:shadow-lg focus-within:shadow-cyan-500/15">
