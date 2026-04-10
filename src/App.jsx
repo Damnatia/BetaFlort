@@ -1,7 +1,6 @@
 ﻿import { useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from './supabase';
 import { useAuth } from './hooks/useAuth';
-
 const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD;
 const ADMIN_PASSWORD2 = import.meta.env.VITE_ADMIN_PASSWORD2;
 const OPENAI_API_KEY = import.meta.env.VITE_OPENAI_API_KEY;
@@ -60,7 +59,7 @@ export default function App() {
   const [isAdmin, setIsAdmin] = useState(false);
 
   const loading = authLoading; // Eski loading değişkenini bozmamak için
-
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   async function handleSignIn() {
     if (mode === 'admin') {
       if ([ADMIN_PASSWORD, ADMIN_PASSWORD2].includes(authForm.password)) {
@@ -832,15 +831,7 @@ export default function App() {
       return setStatus(`Yetersiz jeton. Bir mesaj için ${COIN_COST_PER_MESSAGE} jeton gerekir.`);
     }
 
-    const { data: memberExists } = await supabase
-      .from('members')
-      .select('id')
-      .eq('id', memberSession.id)
-      .maybeSingle();
 
-    if (!memberExists) {
-      return setStatus('Oturum üyeliği veritabanında bulunamadı. Lütfen çıkış yapıp tekrar giriş yap.');
-    }
 
     const slashCommands = {
       '/selam': 'Selam 👋',
@@ -1243,22 +1234,19 @@ export default function App() {
   async function fetchRegisteredMembers() {
     setLoadingMembers(true);
     const { data, error } = await supabase
-      .from('members')
-      .select('id, username, created_at')
-      .order('created_at', { ascending: false });
-
-    const { data: profileData, error: profileError } = await supabase
       .from('member_profiles')
-      .select('member_id, coin_balance, contact_phone');
+      .select('member_id, coin_balance, contact_phone, updated_at')
+      .order('updated_at', { ascending: false });
 
     setLoadingMembers(false);
-    if (error || profileError) return setStatus(error?.message || profileError?.message || 'Üye listesi alınamadı.');
+    if (error) return setStatus('Üye listesi alınamadı: ' + error.message);
 
-    const profileMap = Object.fromEntries((profileData || []).map((p) => [p.member_id, p]));
-    const rows = (data || []).map((member) => ({
-      ...member,
-      coin_balance: Number(profileMap[member.id]?.coin_balance ?? 100),
-      contact_phone: profileMap[member.id]?.contact_phone || '',
+    const rows = (data || []).map((p) => ({
+      id: p.member_id,
+      username: 'Kullanıcı', 
+      coin_balance: p.coin_balance,
+      contact_phone: p.contact_phone,
+      created_at: p.updated_at
     }));
     setRegisteredMembers(rows);
   }
@@ -1528,7 +1516,7 @@ export default function App() {
               <div className="mt-6 space-y-3">
                 <button
                   disabled={loading}
-                  onClick={signIn}
+                  onClick={handleSignIn}
                   className="w-full rounded-2xl bg-gradient-to-r from-fuchsia-500 via-indigo-500 to-cyan-400 px-5 py-4 text-sm font-semibold text-white shadow-lg shadow-indigo-700/35 transition-all hover:scale-[1.01] hover:shadow-xl hover:shadow-fuchsia-500/35 active:scale-[0.99] disabled:opacity-60"
                 >
                   {loading ? 'İşleniyor...' : 'Giriş Yap'}
@@ -1536,7 +1524,7 @@ export default function App() {
                 {mode !== 'admin' && (
                   <button
                     disabled={loading}
-                    onClick={signUp}
+                    onClick={handleSignUp}
                     className="w-full rounded-2xl border border-slate-200 bg-slate-100 px-5 py-4 text-sm font-semibold text-slate-900 transition-all hover:bg-slate-200 active:scale-[0.99] disabled:opacity-60"
                   >
                     Hesap Oluştur
@@ -1613,7 +1601,7 @@ export default function App() {
               <div className="meta selected-profile-meta left-profile-meta">
                 <h4>Aktif Konuşan Kullanıcı</h4>
                 {selectedMemberProfile?.photo_url && <img src={selectedMemberProfile.photo_url} alt={selectedThread.member_username} className="profile-photo" />}
-                <p><strong>Kullanıcı Adı:</strong> {selectedThread.member_username}</p>
+                <p><strong>Kullanıcı:</strong> {memberSession?.email?.split('@')[0]}</p>
                 <p><strong>Yaş:</strong> {selectedMemberProfile?.age || '-'}</p>
                 <p><strong>Şehir:</strong> {selectedMemberProfile?.city || '-'}</p>
                 <p><strong>Hobiler:</strong> {selectedMemberProfile?.hobbies || '-'}</p>
@@ -2133,7 +2121,7 @@ export default function App() {
             <h3 className="text-xl font-semibold text-slate-900">Profilim</h3>
             <p className="mt-2 text-sm text-slate-600">Profilini güncelle, fotoğrafını değiştir ve diğer kullanıcılara nasıl görüneceğini ayarla.</p>
             <div className="mt-4 space-y-2 text-sm text-slate-700">
-              <p><strong>Kullanıcı:</strong> {memberSession?.username}</p>
+              <p><strong>Kullanıcı:</strong> {memberSession?.email?.split('@')[0]}</p>
               <p><strong>Durum:</strong> {memberProfile.status_emoji}</p>
               <p><strong>Şehir:</strong> {memberProfile.city || '-'}</p>
             </div>
