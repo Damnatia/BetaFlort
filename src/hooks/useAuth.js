@@ -1,124 +1,55 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../supabase';
 
-const initialAuth = { username: '', password: '' };
-
-export function useAuth({ adminPasswords = [], setStatus }) {
-  const [mode, setMode] = useState('user');
-  const [authForm, setAuthForm] = useState(initialAuth);
-  const [loading, setLoading] = useState(false);
-  const [memberSession, setMemberSession] = useState(null);
-  const [isAdmin, setIsAdmin] = useState(false);
+export function useAuth() {
+  const [session, setSession] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [status, setStatus] = useState('');
 
   useEffect(() => {
-    try {
-      const savedMode = window.localStorage.getItem('auth_mode');
-      const savedAdmin = window.localStorage.getItem('is_admin_session') === 'true';
-      const savedMember = window.localStorage.getItem('member_session');
-      if (savedMode === 'admin' || savedMode === 'user') setMode(savedMode);
-      if (savedAdmin) setIsAdmin(true);
-      if (savedMember) setMemberSession(JSON.parse(savedMember));
-    } catch {
-      // sessizce geç
-    }
+    // Sayfa açıldığında mevcut oturumu kontrol et
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setLoading(false);
+    });
+
+    // Oturum değişikliklerini (giriş, çıkış, token yenilenme) anlık dinle
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
-  async function signUp() {
-    if (mode === 'admin') return setStatus('Admin kayıt olamaz.');
-    if (!authForm.username || !authForm.password) return setStatus('Kullanıcı adı ve şifre zorunlu.');
-
+  // Supabase Auth Email/Şifre ile Kayıt
+  async function signUp(email, password) {
     setLoading(true);
-    setStatus('');
-
-    const username = authForm.username.trim();
-    const password = authForm.password;
-
-    const { data: createdMember, error } = await supabase
-      .rpc('member_sign_up', {
-        p_username: username,
-        p_password: password,
-      })
-      .single();
-
+    const { error } = await supabase.auth.signUp({ email, password });
+    if (error) setStatus(`Kayıt hatası: ${error.message}`);
+    else setStatus('Kayıt başarılı!');
     setLoading(false);
-    if (error) return setStatus(`Kayıt başarısız: ${error.message}`);
-    if (!createdMember?.id) return setStatus('Kayıt başarısız: beklenmeyen yanıt.');
-
-    setMemberSession(createdMember);
-    setIsAdmin(false);
-    window.localStorage.setItem('is_admin_session', 'false');
-    window.localStorage.setItem('member_session', JSON.stringify(createdMember));
-    setStatus('Kayıt başarılı, otomatik giriş yapıldı.');
   }
 
-  async function signIn() {
+  // Supabase Auth Email/Şifre ile Giriş
+  async function signIn(email, password) {
     setLoading(true);
-    setStatus('');
-
-    if (mode === 'admin') {
-      const validAdminPasswords = adminPasswords.filter(Boolean);
-      if (!validAdminPasswords.length) {
-        setLoading(false);
-        return setStatus('VITE_ADMIN_PASSWORD / VITE_ADMIN_PASSWORD2 eksik.');
-      }
-      if (!validAdminPasswords.includes(authForm.password)) {
-        setLoading(false);
-        return setStatus('Admin şifresi hatalı.');
-      }
-      setIsAdmin(true);
-      setMemberSession(null);
-      window.localStorage.setItem('is_admin_session', 'true');
-      window.localStorage.removeItem('member_session');
-      setLoading(false);
-      return setStatus('Admin girişi başarılı.');
-    }
-
-    if (!authForm.username || !authForm.password) {
-      setLoading(false);
-      return setStatus('Kullanıcı adı ve şifre girmen gerekiyor.');
-    }
-
-    const { data, error } = await supabase
-      .rpc('member_sign_in', {
-        p_username: authForm.username.trim(),
-        p_password: authForm.password,
-      })
-      .single();
-
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) setStatus('E-posta veya şifre hatalı.');
+    else setStatus('Giriş yapıldı.');
     setLoading(false);
-    if (error || !data) return setStatus('Kullanıcı adı veya şifre hatalı.');
-
-    setMemberSession(data);
-    setIsAdmin(false);
-    window.localStorage.setItem('is_admin_session', 'false');
-    window.localStorage.setItem('member_session', JSON.stringify(data));
-    setStatus('Giriş başarılı.');
   }
 
-  function signOut(onAfterSignOut) {
-    setMemberSession(null);
-    setIsAdmin(false);
-    window.localStorage.removeItem('is_admin_session');
-    window.localStorage.removeItem('member_session');
-    if (typeof onAfterSignOut === 'function') {
-      onAfterSignOut();
-    }
+  // Güvenli Çıkış
+  async function signOut() {
+    await supabase.auth.signOut();
     setStatus('Çıkış yapıldı.');
   }
 
-  function toggleMode(nextMode) {
-    setMode(nextMode);
-    window.localStorage.setItem('auth_mode', nextMode);
-  }
-
   return {
-    mode,
-    setMode: toggleMode,
-    authForm,
-    setAuthForm,
+    session,
+    user: session?.user, // Oturum açan kullanıcının UUID'si user.id içinde olacak
     loading,
-    memberSession,
-    isAdmin,
+    status,
     signIn,
     signUp,
     signOut,
