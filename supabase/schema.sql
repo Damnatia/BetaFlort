@@ -132,45 +132,59 @@ $$;
 grant execute on function public.member_sign_up(text, text) to anon, authenticated;
 grant execute on function public.member_sign_in(text, text) to anon, authenticated;
 
-create or replace function public.sync_member_from_auth_user()
-returns trigger
-language plpgsql
-security definer
-set search_path = public
-as $$
-declare
-  resolved_username text;
+do $$
 begin
-  resolved_username := nullif(trim(coalesce(new.raw_user_meta_data ->> 'username', split_part(new.email, '@', 1))), '');
-  if resolved_username is null then
-    resolved_username := concat('user_', replace(new.id::text, '-', ''));
+  if to_regclass('public.members') is null then
+    create table public.members (
+      id uuid primary key default gen_random_uuid(),
+      username text unique not null,
+      password_hash text not null,
+      created_at timestamptz not null default now()
+    );
   end if;
 
-  insert into public.members (id, username, password_hash)
-  values (new.id, resolved_username, 'managed_by_supabase_auth')
-  on conflict (id) do update
-  set username = excluded.username;
+  execute $fn$
+    create or replace function public.sync_member_from_auth_user()
+    returns trigger
+    language plpgsql
+    security definer
+    set search_path = public
+    as $inner$
+    declare
+      resolved_username text;
+    begin
+      resolved_username := nullif(trim(coalesce(new.raw_user_meta_data ->> 'username', split_part(new.email, '@', 1))), '');
+      if resolved_username is null then
+        resolved_username := concat('user_', replace(new.id::text, '-', ''));
+      end if;
 
-  return new;
-end;
-$$;
+      insert into public.members (id, username, password_hash)
+      values (new.id, resolved_username, 'managed_by_supabase_auth')
+      on conflict (id) do update
+      set username = excluded.username;
 
-drop trigger if exists trg_sync_member_from_auth_user on auth.users;
-create trigger trg_sync_member_from_auth_user
-after insert or update on auth.users
-for each row execute function public.sync_member_from_auth_user();
+      return new;
+    end;
+    $inner$;
+  $fn$;
 
-insert into public.members (id, username, password_hash)
-select
-  au.id,
-  coalesce(
-    nullif(trim(coalesce(au.raw_user_meta_data ->> 'username', split_part(au.email, '@', 1))), ''),
-    concat('user_', replace(au.id::text, '-', ''))
-  ) as username,
-  'managed_by_supabase_auth' as password_hash
-from auth.users au
-on conflict (id) do update
-set username = excluded.username;
+  if to_regclass('auth.users') is not null then
+    execute 'drop trigger if exists trg_sync_member_from_auth_user on auth.users';
+    execute 'create trigger trg_sync_member_from_auth_user after insert or update on auth.users for each row execute function public.sync_member_from_auth_user()';
+
+    insert into public.members (id, username, password_hash)
+    select
+      au.id,
+      coalesce(
+        nullif(trim(coalesce(au.raw_user_meta_data ->> 'username', split_part(au.email, '@', 1))), ''),
+        concat('user_', replace(au.id::text, '-', ''))
+      ) as username,
+      'managed_by_supabase_auth' as password_hash
+    from auth.users au
+    on conflict (id) do update
+    set username = excluded.username;
+  end if;
+end $$;
 
 -- Eski şemadan gelen created_by uuid kolonunu text'e çevir (çakışmasız migration)
 do $$

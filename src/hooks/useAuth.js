@@ -65,21 +65,10 @@ export function useAuth() {
       return;
     }
 
-    const userId = data?.user?.id;
-    if (userId) {
-      const { error: memberError } = await supabase
-        .from('members')
-        .upsert({
-          id: userId,
-          username: normalizedUsername,
-          password_hash: 'managed_by_supabase_auth',
-        }, { onConflict: 'id' });
-
-      if (memberError) {
-        setStatus(`Kayıt tamamlandı ama profil eşitleme hatası: ${memberError.message}`);
-        setLoading(false);
-        return;
-      }
+    if (!data?.user?.id) {
+      setStatus('Kayıt oluşturuldu ancak kullanıcı bilgisi alınamadı.');
+      setLoading(false);
+      return;
     }
 
     if (typeof window !== 'undefined') {
