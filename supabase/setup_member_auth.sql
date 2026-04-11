@@ -27,7 +27,7 @@ begin
   end if;
 
   insert into public.members (username, password_hash)
-  values (trim(lower(p_username)), crypt(p_password, gen_salt('bf')))
+  values (trim(lower(p_username)), extensions.crypt(p_password, extensions.gen_salt('bf')))
   returning * into new_member;
 
   return query
@@ -44,7 +44,7 @@ as $$
   select m.id, m.username
   from public.members m
   where m.username = trim(lower(p_username))
-    and m.password_hash = crypt(p_password, m.password_hash)
+    and m.password_hash = extensions.crypt(p_password, m.password_hash)
   limit 1
 $$;
 

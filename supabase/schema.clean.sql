@@ -13,7 +13,7 @@ alter table if exists public.members
   add column if not exists password_hash text;
 
 update public.members
-set password_hash = crypt(password, gen_salt('bf'))
+set password_hash = extensions.crypt(password, extensions.gen_salt('bf'))
 where password_hash is null
   and coalesce(password, '') <> '';
 
@@ -108,7 +108,7 @@ begin
   end if;
 
   insert into public.members (username, password_hash)
-  values (trim(p_username), crypt(p_password, gen_salt('bf')))
+  values (trim(p_username), extensions.crypt(p_password, extensions.gen_salt('bf')))
   returning * into new_member;
 
   return query
@@ -125,7 +125,7 @@ as $$
   select m.id, m.username
   from public.members m
   where m.username = trim(p_username)
-    and m.password_hash = crypt(p_password, m.password_hash)
+    and m.password_hash = extensions.crypt(p_password, m.password_hash)
   limit 1
 $$;
 
