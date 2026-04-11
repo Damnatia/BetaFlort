@@ -55,7 +55,7 @@ export default function App() {
   const { user: memberSession, loading: authLoading, signIn: supabaseSignIn, signUp: supabaseSignUp, signOut: supabaseSignOut } = useAuth();
   
   const [mode, setMode] = useState('user');
-  const [authForm, setAuthForm] = useState({ email: '', password: '' });
+  const [authForm, setAuthForm] = useState({ username: '', password: '' });
   const [isAdmin, setIsAdmin] = useState(false);
 
   const loading = authLoading; // Eski loading değişkenini bozmamak için
@@ -70,14 +70,14 @@ export default function App() {
       }
       return;
     }
-    if (!authForm.email || !authForm.password) return setStatus('E-posta ve şifre gerekli.');
-    await supabaseSignIn(authForm.email, authForm.password);
+    if (!authForm.username || !authForm.password) return setStatus('Kullanıcı adı ve şifre gerekli.');
+    await supabaseSignIn(authForm.username, authForm.password);
   }
 
   async function handleSignUp() {
     if (mode === 'admin') return setStatus('Admin kayıt olamaz.');
-    if (!authForm.email || !authForm.password) return setStatus('E-posta ve şifre gerekli.');
-    await supabaseSignUp(authForm.email, authForm.password);
+    if (!authForm.username || !authForm.password) return setStatus('Kullanıcı adı ve şifre gerekli.');
+    await supabaseSignUp(authForm.username, authForm.password);
   }
 
   const [virtualProfiles, setVirtualProfiles] = useState([]);
@@ -1492,11 +1492,11 @@ export default function App() {
                 <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 transition-all focus-within:border-fuchsia-400 focus-within:shadow-lg focus-within:shadow-fuchsia-500/15">
                   <span className="text-lg text-slate-500">👤</span>
                   <input
-  type={mode === 'admin' ? 'text' : 'email'}
-  placeholder={mode === 'admin' ? 'Admin modunda e-posta kapalı' : 'E-posta adresi'}
+  type="text"
+  placeholder={mode === 'admin' ? 'Admin modunda kullanıcı adı kapalı' : 'Kullanıcı adı'}
   disabled={mode === 'admin'}
-  value={mode === 'admin' ? '' : authForm.email}
-  onChange={(e) => setAuthForm((st) => ({ ...st, email: e.target.value }))}
+  value={mode === 'admin' ? '' : authForm.username}
+  onChange={(e) => setAuthForm((st) => ({ ...st, username: e.target.value }))}
   className="flex-1 bg-transparent py-2 text-sm text-slate-900 placeholder:text-slate-400 outline-none disabled:cursor-not-allowed disabled:text-slate-400"
 />
                 </div>
@@ -1601,7 +1601,7 @@ export default function App() {
               <div className="meta selected-profile-meta left-profile-meta">
                 <h4>Aktif Konuşan Kullanıcı</h4>
                 {selectedMemberProfile?.photo_url && <img src={selectedMemberProfile.photo_url} alt={selectedThread.member_username} className="profile-photo" />}
-                <p><strong>Kullanıcı:</strong> {memberSession?.email?.split('@')[0]}</p>
+                <p><strong>Kullanıcı:</strong> {memberSession?.username || 'Üye'}</p>
                 <p><strong>Yaş:</strong> {selectedMemberProfile?.age || '-'}</p>
                 <p><strong>Şehir:</strong> {selectedMemberProfile?.city || '-'}</p>
                 <p><strong>Hobiler:</strong> {selectedMemberProfile?.hobbies || '-'}</p>
@@ -2121,7 +2121,7 @@ export default function App() {
             <h3 className="text-xl font-semibold text-slate-900">Profilim</h3>
             <p className="mt-2 text-sm text-slate-600">Profilini güncelle, fotoğrafını değiştir ve diğer kullanıcılara nasıl görüneceğini ayarla.</p>
             <div className="mt-4 space-y-2 text-sm text-slate-700">
-              <p><strong>Kullanıcı:</strong> {memberSession?.email?.split('@')[0]}</p>
+              <p><strong>Kullanıcı:</strong> {memberSession?.username || 'Üye'}</p>
               <p><strong>Durum:</strong> {memberProfile.status_emoji}</p>
               <p><strong>Şehir:</strong> {memberProfile.city || '-'}</p>
             </div>
