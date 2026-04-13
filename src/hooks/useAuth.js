@@ -14,27 +14,37 @@ function isMissingRpcError(error) {
 }
 
 async function ensureMemberProfile(memberId, username) {
-  if (!memberId) return;
+  if (!memberId) return { ok: true };
 
   const normalizedUsername = String(username || '').trim().toLowerCase();
   try {
-    await supabase
+    const { error: memberError } = await supabase
       .from('members')
       .upsert({
         id: memberId,
         username: normalizedUsername || `member_${String(memberId).replace(/-/g, '').slice(0, 16)}`,
         password_hash: 'managed_by_auth_flow',
-      }, { onConflict: 'id' });
+      }, { onConflict: 'id', ignoreDuplicates: true });
 
-    await supabase
+    if (memberError) {
+      return { ok: false, error: `members_sync_failed:${memberError.message}` };
+    }
+
+    const { error: profileError } = await supabase
       .from('member_profiles')
       .upsert({
         member_id: memberId,
         coin_balance: 100,
         status_emoji: '🙂',
       }, { onConflict: 'member_id' });
+
+    if (profileError) {
+      return { ok: false, error: `member_profiles_sync_failed:${profileError.message}` };
+    }
+
+    return { ok: true };
   } catch (profileSyncError) {
-    console.warn('ensureMemberProfile failed', profileSyncError);
+    return { ok: false, error: profileSyncError?.message || 'member_profile_sync_unknown' };
   }
 }
 
@@ -109,7 +119,11 @@ export function useAuth() {
       row = { id: authData?.user?.id, username: normalizedUsername };
       activeError = null;
     } else if (activeError) {
-      setStatus(`Kayıt hatası: ${activeError.message}`);
+      if (activeError?.code === '23505' || String(activeError?.message || '').toLowerCase().includes('duplicate')) {
+        setStatus('Bu kullanıcı adı zaten kayıtlı. Giriş yapmayı deneyin.');
+      } else {
+        setStatus(`Kayıt hatası: ${activeError.message}`);
+      }
       setLoading(false);
       return;
     }
@@ -120,8 +134,14 @@ export function useAuth() {
       return;
     }
 
+    const profileSync = await ensureMemberProfile(row.id, row.username);
+    if (!profileSync.ok) {
+      setStatus(`Kayıt tamamlandı ama profil oluşturulamadı: ${profileSync.error}`);
+      setLoading(false);
+      return;
+    }
+
     const nextSession = { user: { id: row.id, username: row.username } };
-    await ensureMemberProfile(row.id, row.username);
     setSession(nextSession);
     if (typeof window !== 'undefined') {
       window.localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(nextSession));
@@ -160,7 +180,12 @@ export function useAuth() {
     if (activeError || !row?.id) {
       setStatus('Kullanıcı adı veya şifre hatalı.');
     } else {
-      await ensureMemberProfile(row.id, row.username);
+      const profileSync = await ensureMemberProfile(row.id, row.username);
+      if (!profileSync.ok) {
+        setStatus(`Giriş yapıldı ama profil senkronu başarısız: ${profileSync.error}`);
+        setLoading(false);
+        return;
+      }
       const nextSession = { user: { id: row.id, username: row.username } };
       setSession(nextSession);
       if (typeof window !== 'undefined') {
