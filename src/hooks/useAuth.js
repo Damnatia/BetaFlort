@@ -13,6 +13,31 @@ function isMissingRpcError(error) {
   return error?.code === 'PGRST202' || message.includes('Could not find the function');
 }
 
+async function ensureMemberProfile(memberId, username) {
+  if (!memberId) return;
+
+  const normalizedUsername = String(username || '').trim().toLowerCase();
+  try {
+    await supabase
+      .from('members')
+      .upsert({
+        id: memberId,
+        username: normalizedUsername || `member_${String(memberId).replace(/-/g, '').slice(0, 16)}`,
+        password_hash: 'managed_by_auth_flow',
+      }, { onConflict: 'id' });
+
+    await supabase
+      .from('member_profiles')
+      .upsert({
+        member_id: memberId,
+        coin_balance: 100,
+        status_emoji: '🙂',
+      }, { onConflict: 'member_id' });
+  } catch (profileSyncError) {
+    console.warn('ensureMemberProfile failed', profileSyncError);
+  }
+}
+
 export function useAuth() {
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -94,6 +119,7 @@ export function useAuth() {
     }
 
     const nextSession = { user: { id: row.id, username: row.username } };
+    await ensureMemberProfile(row.id, row.username);
     setSession(nextSession);
     if (typeof window !== 'undefined') {
       window.localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(nextSession));
@@ -130,6 +156,7 @@ export function useAuth() {
     if (error || !row?.id) {
       setStatus('Kullanıcı adı veya şifre hatalı.');
     } else {
+      await ensureMemberProfile(row.id, row.username);
       const nextSession = { user: { id: row.id, username: row.username } };
       setSession(nextSession);
       if (typeof window !== 'undefined') {

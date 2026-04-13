@@ -10,6 +10,34 @@ create table if not exists public.members (
   created_at timestamptz not null default now()
 );
 
+create table if not exists public.member_profiles (
+  member_id uuid primary key references public.members(id) on delete cascade,
+  age int,
+  hobbies text,
+  city text,
+  photo_url text,
+  status_emoji text not null default '🙂',
+  coin_balance int not null default 100 check (coin_balance >= 0),
+  contact_phone text,
+  updated_at timestamptz not null default now()
+);
+
+create or replace function public.ensure_member_profile_defaults()
+returns trigger
+language plpgsql
+as $$
+begin
+  insert into public.member_profiles (member_id, coin_balance, status_emoji)
+  values (new.id, 100, '🙂')
+  on conflict (member_id) do nothing;
+  return new;
+end $$;
+
+drop trigger if exists trg_members_create_profile_defaults on public.members;
+create trigger trg_members_create_profile_defaults
+after insert on public.members
+for each row execute function public.ensure_member_profile_defaults();
+
 create or replace function public.member_sign_up(p_username text, p_password text)
 returns table (id uuid, username text)
 language plpgsql
