@@ -119,7 +119,12 @@ export function useAuth() {
       row = { id: authData?.user?.id, username: normalizedUsername };
       activeError = null;
     } else if (activeError) {
-      if (activeError?.code === '23505' || String(activeError?.message || '').toLowerCase().includes('duplicate')) {
+      const lowered = String(activeError?.message || '').toLowerCase();
+      if (
+        activeError?.code === '23505'
+        || lowered.includes('duplicate')
+        || lowered.includes('username_taken')
+      ) {
         setStatus('Bu kullanıcı adı zaten kayıtlı. Giriş yapmayı deneyin.');
       } else {
         setStatus(`Kayıt hatası: ${activeError.message}`);

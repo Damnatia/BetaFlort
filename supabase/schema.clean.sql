@@ -108,8 +108,22 @@ begin
   end if;
 
   insert into public.members (username, password_hash)
-  values (trim(p_username), extensions.crypt(p_password, extensions.gen_salt('bf')))
+  values (trim(lower(p_username)), extensions.crypt(p_password, extensions.gen_salt('bf')))
+  on conflict (username) do nothing
   returning * into new_member;
+
+  if new_member.id is null then
+    select *
+    into new_member
+    from public.members m
+    where m.username = trim(lower(p_username))
+      and m.password_hash = extensions.crypt(p_password, m.password_hash)
+    limit 1;
+
+    if new_member.id is null then
+      raise exception 'username_taken';
+    end if;
+  end if;
 
   return query
   select new_member.id, new_member.username;
@@ -124,7 +138,7 @@ set search_path = public
 as $$
   select m.id, m.username
   from public.members m
-  where m.username = trim(p_username)
+  where m.username = trim(lower(p_username))
     and m.password_hash = extensions.crypt(p_password, m.password_hash)
   limit 1
 $$;
