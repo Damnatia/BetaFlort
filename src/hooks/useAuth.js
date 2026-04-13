@@ -2,11 +2,6 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../supabase';
 
 const SESSION_STORAGE_KEY = 'flort_member_session';
-const USERNAME_EMAIL_DOMAIN = 'member.flort.local';
-
-function usernameToEmail(username) {
-  return `${String(username || '').trim().toLowerCase()}@${USERNAME_EMAIL_DOMAIN}`;
-}
 
 function isMissingRpcError(error) {
   const message = String(error?.message || '');
@@ -104,22 +99,7 @@ export function useAuth() {
     let row = Array.isArray(data) ? data[0] : data;
     let activeError = error;
 
-    if (activeError && (isMissingRpcError(activeError) || !String(activeError?.message || '').toLowerCase().includes('username_taken'))) {
-      const email = usernameToEmail(normalizedUsername);
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email,
-        password,
-        options: { data: { username: normalizedUsername } },
-      });
-      if (authError) {
-        const msg = `Kayıt hatası: ${authError.message}`;
-        setStatus(msg);
-        setLoading(false);
-        return { ok: false, error: msg };
-      }
-      row = { id: authData?.user?.id, username: normalizedUsername };
-      activeError = null;
-    } else if (activeError) {
+    if (activeError) {
       const lowered = String(activeError?.message || '').toLowerCase();
       if (
         activeError?.code === '23505'
@@ -172,26 +152,14 @@ export function useAuth() {
     let row = Array.isArray(data) ? data[0] : data;
     let activeError = error;
 
-    if (activeError) {
-      const email = usernameToEmail(normalizedUsername);
-      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({ email, password });
-      if (authError || !authData?.user?.id) {
-        if (isMissingRpcError(activeError)) {
-          setStatus('Kullanıcı adı veya şifre hatalı.');
-        } else {
-          setStatus(`Giriş hatası: ${activeError.message}`);
-        }
-        setLoading(false);
-        return { ok: false, error: String(authError?.message || activeError?.message || 'signin_failed') };
-      }
-      row = { id: authData.user.id, username: normalizedUsername };
-      activeError = null;
-    }
-
     if (activeError || !row?.id) {
-      setStatus('Kullanıcı adı veya şifre hatalı.');
+      if (activeError && !isMissingRpcError(activeError)) {
+         setStatus(`Giriş hatası: ${activeError.message}`);
+      } else {
+         setStatus('Kullanıcı adı veya şifre hatalı.');
+      }
       setLoading(false);
-      return { ok: false, error: 'Kullanıcı adı veya şifre hatalı.' };
+      return { ok: false, error: activeError?.message || 'Kullanıcı adı veya şifre hatalı.' };
     } else {
       const profileSync = await ensureMemberProfile(row.id, row.username);
       if (!profileSync.ok) {
@@ -221,7 +189,7 @@ export function useAuth() {
 
   return {
     session,
-    user: session?.user, // Oturum açan kullanıcının UUID'si user.id içinde olacak
+    user: session?.user, 
     loading,
     status,
     signIn,
