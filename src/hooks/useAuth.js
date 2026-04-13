@@ -3,11 +3,6 @@ import { supabase } from '../supabase';
 
 const SESSION_STORAGE_KEY = 'flort_member_session';
 
-function isMissingRpcError(error) {
-  const message = String(error?.message || '');
-  return error?.code === 'PGRST202' || message.includes('Could not find the function');
-}
-
 export function useAuth() {
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -28,15 +23,6 @@ export function useAuth() {
           window.localStorage.removeItem(SESSION_STORAGE_KEY);
         }
       }
-
-      const { data: { session: authSession } } = await supabase.auth.getSession();
-      if (authSession?.user?.id) {
-        const fallbackUsername = authSession.user.user_metadata?.username
-          || authSession.user.email?.split('@')[0]
-          || 'member';
-        const nextSession = { user: { id: authSession.user.id, username: fallbackUsername } };
-        setSession(nextSession);
-      }
       setLoading(false);
     }
 
@@ -55,38 +41,36 @@ export function useAuth() {
     }
 
     setLoading(true);
-    // Veritabanı fonksiyonu (RPC) çağrılır
+    // Doğrudan veritabanı RPC fonksiyonuna gidiyoruz
     const { data, error } = await supabase.rpc('member_sign_up', {
       p_username: normalizedUsername,
       p_password: password,
     });
     
-    // Veritabanı artık JSON döndürdüğü için doğrudan veriyi alıyoruz
-    let row = data; 
-    let activeError = error;
-
-    if (activeError) {
-      const lowered = String(activeError?.message || '').toLowerCase();
+    // Hata varsa sahte e-posta kaydına DÜŞMEDEN direkt ekrana basıyoruz
+    if (error) {
+      const lowered = String(error?.message || '').toLowerCase();
       if (
-        activeError?.code === '23505'
-        || lowered.includes('duplicate')
-        || lowered.includes('username_taken')
+        error?.code === '23505' || 
+        lowered.includes('duplicate') || 
+        lowered.includes('username_taken')
       ) {
         setStatus('Bu kullanıcı adı zaten kayıtlı. Giriş yapmayı deneyin.');
       } else {
-        setStatus(`Kayıt hatası: ${activeError.message}`);
+        setStatus(`Kayıt hatası: ${error.message}`);
       }
       setLoading(false);
-      return { ok: false, error: String(activeError?.message || 'signup_failed') };
+      return { ok: false, error: error.message };
     }
 
+    let row = Array.isArray(data) ? data[0] : data;
     if (!row?.id || !row?.username) {
       setStatus('Kayıt başarılı olmadı: üye bilgisi alınamadı.');
       setLoading(false);
-      return { ok: false, error: 'Kayıt başarılı olmadı: üye bilgisi alınamadı.' };
+      return { ok: false, error: 'Üye bilgisi eksik.' };
     }
 
-    // DB tetikleyicisi profili zaten oluşturduğu için burada manuel işlem yapılmaz.
+    // VERİTABANI TRİGGER'I PROFİLİ ZATEN OLUŞTURDU, MANUEL MÜDAHALE KALDIRILDI.
     
     const nextSession = { user: { id: row.id, username: row.username } };
     setSession(nextSession);
@@ -111,17 +95,12 @@ export function useAuth() {
       p_password: password,
     });
     
-    let row = data;
-    let activeError = error;
+    let row = Array.isArray(data) ? data[0] : data;
 
-    if (activeError || !row?.id) {
-      if (activeError && !isMissingRpcError(activeError)) {
-         setStatus(`Giriş hatası: ${activeError.message}`);
-      } else {
-         setStatus('Kullanıcı adı veya şifre hatalı.');
-      }
-      setLoading(false);
-      return { ok: false, error: activeError?.message || 'Kullanıcı adı veya şifre hatalı.' };
+    if (error || !row?.id) {
+       setStatus(error ? `Giriş hatası: ${error.message}` : 'Kullanıcı adı veya şifre hatalı.');
+       setLoading(false);
+       return { ok: false, error: error?.message || 'Hatalı giriş.' };
     } else {
       const nextSession = { user: { id: row.id, username: row.username } };
       setSession(nextSession);
@@ -135,7 +114,7 @@ export function useAuth() {
   }
 
   async function signOut() {
-    await supabase.auth.signOut();
+    // E-posta Auth sistemi devreden çıktığı için localStorage temizlemek yeterlidir
     setSession(null);
     if (typeof window !== 'undefined') {
       window.localStorage.removeItem(SESSION_STORAGE_KEY);
