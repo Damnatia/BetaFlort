@@ -104,7 +104,7 @@ export function useAuth() {
     let row = Array.isArray(data) ? data[0] : data;
     let activeError = error;
 
-    if (activeError && isMissingRpcError(activeError)) {
+    if (activeError && (isMissingRpcError(activeError) || !String(activeError?.message || '').toLowerCase().includes('username_taken'))) {
       const email = usernameToEmail(normalizedUsername);
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
@@ -170,11 +170,15 @@ export function useAuth() {
     let row = Array.isArray(data) ? data[0] : data;
     let activeError = error;
 
-    if (activeError && isMissingRpcError(activeError)) {
+    if (activeError) {
       const email = usernameToEmail(normalizedUsername);
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({ email, password });
       if (authError || !authData?.user?.id) {
-        setStatus('Kullanıcı adı veya şifre hatalı.');
+        if (isMissingRpcError(activeError)) {
+          setStatus('Kullanıcı adı veya şifre hatalı.');
+        } else {
+          setStatus(`Giriş hatası: ${activeError.message}`);
+        }
         setLoading(false);
         return;
       }
