@@ -92,8 +92,9 @@ export function useAuth() {
       p_password: password,
     });
     let row = Array.isArray(data) ? data[0] : data;
+    let activeError = error;
 
-    if (error && isMissingRpcError(error)) {
+    if (activeError && isMissingRpcError(activeError)) {
       const email = usernameToEmail(normalizedUsername);
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
@@ -106,8 +107,9 @@ export function useAuth() {
         return;
       }
       row = { id: authData?.user?.id, username: normalizedUsername };
-    } else if (error) {
-      setStatus(`Kayıt hatası: ${error.message}`);
+      activeError = null;
+    } else if (activeError) {
+      setStatus(`Kayıt hatası: ${activeError.message}`);
       setLoading(false);
       return;
     }
@@ -141,8 +143,9 @@ export function useAuth() {
       p_password: password,
     });
     let row = Array.isArray(data) ? data[0] : data;
+    let activeError = error;
 
-    if (error && isMissingRpcError(error)) {
+    if (activeError && isMissingRpcError(activeError)) {
       const email = usernameToEmail(normalizedUsername);
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({ email, password });
       if (authError || !authData?.user?.id) {
@@ -151,9 +154,10 @@ export function useAuth() {
         return;
       }
       row = { id: authData.user.id, username: normalizedUsername };
+      activeError = null;
     }
 
-    if (error || !row?.id) {
+    if (activeError || !row?.id) {
       setStatus('Kullanıcı adı veya şifre hatalı.');
     } else {
       await ensureMemberProfile(row.id, row.username);
