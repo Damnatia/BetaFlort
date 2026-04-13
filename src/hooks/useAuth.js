@@ -29,7 +29,6 @@ export function useAuth() {
         }
       }
 
-      // RPC şeması kurulmadan auth fallback'e düşülmüş eski hesaplar için
       const { data: { session: authSession } } = await supabase.auth.getSession();
       if (authSession?.user?.id) {
         const fallbackUsername = authSession.user.user_metadata?.username
@@ -46,7 +45,6 @@ export function useAuth() {
     } else {
       setLoading(false);
     }
-    return () => {};
   }, []);
 
   async function signUp(username, password) {
@@ -57,13 +55,14 @@ export function useAuth() {
     }
 
     setLoading(true);
-    // 1. Doğrudan veritabanı fonksiyonunu çağırıyoruz
+    // Veritabanı fonksiyonu (RPC) çağrılır
     const { data, error } = await supabase.rpc('member_sign_up', {
       p_username: normalizedUsername,
       p_password: password,
     });
     
-    let row = Array.isArray(data) ? data[0] : data;
+    // Veritabanı artık JSON döndürdüğü için doğrudan veriyi alıyoruz
+    let row = data; 
     let activeError = error;
 
     if (activeError) {
@@ -87,10 +86,8 @@ export function useAuth() {
       return { ok: false, error: 'Kayıt başarılı olmadı: üye bilgisi alınamadı.' };
     }
 
-    // VERİTABANI TRİGGER'I PROFİLİ ZATEN OLUŞTURDU. 
-    // Önceden burada olan ensureMemberProfile adımını yetki çakışması yapmaması için kaldırdık.
-
-    // 2. Oturumu tarayıcıya kaydet ve giriş yap
+    // DB tetikleyicisi profili zaten oluşturduğu için burada manuel işlem yapılmaz.
+    
     const nextSession = { user: { id: row.id, username: row.username } };
     setSession(nextSession);
     if (typeof window !== 'undefined') {
@@ -114,7 +111,7 @@ export function useAuth() {
       p_password: password,
     });
     
-    let row = Array.isArray(data) ? data[0] : data;
+    let row = data;
     let activeError = error;
 
     if (activeError || !row?.id) {
@@ -126,9 +123,6 @@ export function useAuth() {
       setLoading(false);
       return { ok: false, error: activeError?.message || 'Kullanıcı adı veya şifre hatalı.' };
     } else {
-      
-      // Önceden burada olan ensureMemberProfile adımını kaldırdık.
-      
       const nextSession = { user: { id: row.id, username: row.username } };
       setSession(nextSession);
       if (typeof window !== 'undefined') {
