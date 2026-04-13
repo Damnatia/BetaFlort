@@ -25,15 +25,13 @@ export function useAuth() {
       }
       setLoading(false);
     }
-
-    if (typeof window !== 'undefined') {
-      bootstrap();
-    } else {
-      setLoading(false);
-    }
+    if (typeof window !== 'undefined') bootstrap();
   }, []);
 
   async function signUp(username, password) {
+    // KONTROL NOKTASI: Bu yazıyı tarayıcı konsolunda görmeliyiz!
+    console.log("🚀 YENİ KAYIT SİSTEMİ ÇALIŞIYOR - YEDEK SİSTEM VE ENSURE_PROFILE DEVRE DIŞI!");
+
     const normalizedUsername = String(username || '').trim().toLowerCase();
     if (!normalizedUsername) {
       setStatus('Kullanıcı adı gerekli.');
@@ -41,20 +39,17 @@ export function useAuth() {
     }
 
     setLoading(true);
-    // Doğrudan veritabanı RPC fonksiyonuna gidiyoruz
+    
+    // Doğrudan ve SADECE veritabanı fonksiyonunu çağırıyoruz
     const { data, error } = await supabase.rpc('member_sign_up', {
       p_username: normalizedUsername,
       p_password: password,
     });
     
-    // Hata varsa sahte e-posta kaydına DÜŞMEDEN direkt ekrana basıyoruz
     if (error) {
+      console.error("RPC HATASI:", error); // Gerçek hatayı konsola basıyoruz
       const lowered = String(error?.message || '').toLowerCase();
-      if (
-        error?.code === '23505' || 
-        lowered.includes('duplicate') || 
-        lowered.includes('username_taken')
-      ) {
+      if (error?.code === '23505' || lowered.includes('duplicate') || lowered.includes('username_taken')) {
         setStatus('Bu kullanıcı adı zaten kayıtlı. Giriş yapmayı deneyin.');
       } else {
         setStatus(`Kayıt hatası: ${error.message}`);
@@ -70,13 +65,14 @@ export function useAuth() {
       return { ok: false, error: 'Üye bilgisi eksik.' };
     }
 
-    // VERİTABANI TRİGGER'I PROFİLİ ZATEN OLUŞTURDU, MANUEL MÜDAHALE KALDIRILDI.
-    
+    // Profil veritabanı tetikleyicisi tarafından anında oluşturuldu.
+    // Oturumu kaydedip giriş yapıyoruz.
     const nextSession = { user: { id: row.id, username: row.username } };
     setSession(nextSession);
     if (typeof window !== 'undefined') {
       window.localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(nextSession));
     }
+    
     setStatus('Kayıt başarılı!');
     setLoading(false);
     return { ok: true };
@@ -114,21 +110,10 @@ export function useAuth() {
   }
 
   async function signOut() {
-    // E-posta Auth sistemi devreden çıktığı için localStorage temizlemek yeterlidir
     setSession(null);
-    if (typeof window !== 'undefined') {
-      window.localStorage.removeItem(SESSION_STORAGE_KEY);
-    }
+    if (typeof window !== 'undefined') window.localStorage.removeItem(SESSION_STORAGE_KEY);
     setStatus('Çıkış yapıldı.');
   }
 
-  return {
-    session,
-    user: session?.user, 
-    loading,
-    status,
-    signIn,
-    signUp,
-    signOut,
-  };
+  return { session, user: session?.user, loading, status, signIn, signUp, signOut };
 }
