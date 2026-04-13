@@ -71,13 +71,19 @@ export default function App() {
       return;
     }
     if (!authForm.username || !authForm.password) return setStatus('Kullanıcı adı ve şifre gerekli.');
-    await supabaseSignIn(authForm.username, authForm.password);
+    if (authForm.password.length < 6) return setStatus('Şifre en az 6 karakter olmalı.');
+    const result = await supabaseSignIn(authForm.username, authForm.password);
+    if (!result?.ok) setStatus(result?.error || 'Giriş başarısız.');
+    else setStatus('Giriş yapıldı.');
   }
 
   async function handleSignUp() {
     if (mode === 'admin') return setStatus('Admin kayıt olamaz.');
     if (!authForm.username || !authForm.password) return setStatus('Kullanıcı adı ve şifre gerekli.');
-    await supabaseSignUp(authForm.username, authForm.password);
+    if (authForm.password.length < 6) return setStatus('Şifre en az 6 karakter olmalı.');
+    const result = await supabaseSignUp(authForm.username, authForm.password);
+    if (!result?.ok) setStatus(result?.error || 'Kayıt başarısız.');
+    else setStatus('Kayıt başarılı!');
   }
 
   const [virtualProfiles, setVirtualProfiles] = useState([]);

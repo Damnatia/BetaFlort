@@ -93,7 +93,7 @@ export function useAuth() {
     const normalizedUsername = String(username || '').trim().toLowerCase();
     if (!normalizedUsername) {
       setStatus('Kullanıcı adı gerekli.');
-      return;
+      return { ok: false, error: 'Kullanıcı adı gerekli.' };
     }
 
     setLoading(true);
@@ -112,9 +112,10 @@ export function useAuth() {
         options: { data: { username: normalizedUsername } },
       });
       if (authError) {
-        setStatus(`Kayıt hatası: ${authError.message}`);
+        const msg = `Kayıt hatası: ${authError.message}`;
+        setStatus(msg);
         setLoading(false);
-        return;
+        return { ok: false, error: msg };
       }
       row = { id: authData?.user?.id, username: normalizedUsername };
       activeError = null;
@@ -130,20 +131,20 @@ export function useAuth() {
         setStatus(`Kayıt hatası: ${activeError.message}`);
       }
       setLoading(false);
-      return;
+      return { ok: false, error: String(activeError?.message || 'signup_failed') };
     }
 
     if (!row?.id || !row?.username) {
       setStatus('Kayıt başarılı olmadı: üye bilgisi alınamadı.');
       setLoading(false);
-      return;
+      return { ok: false, error: 'Kayıt başarılı olmadı: üye bilgisi alınamadı.' };
     }
 
     const profileSync = await ensureMemberProfile(row.id, row.username);
     if (!profileSync.ok) {
       setStatus(`Kayıt tamamlandı ama profil oluşturulamadı: ${profileSync.error}`);
       setLoading(false);
-      return;
+      return { ok: false, error: `Kayıt tamamlandı ama profil oluşturulamadı: ${profileSync.error}` };
     }
 
     const nextSession = { user: { id: row.id, username: row.username } };
@@ -153,13 +154,14 @@ export function useAuth() {
     }
     setStatus('Kayıt başarılı!');
     setLoading(false);
+    return { ok: true };
   }
 
   async function signIn(username, password) {
     const normalizedUsername = String(username || '').trim().toLowerCase();
     if (!normalizedUsername) {
       setStatus('Kullanıcı adı gerekli.');
-      return;
+      return { ok: false, error: 'Kullanıcı adı gerekli.' };
     }
 
     setLoading(true);
@@ -180,7 +182,7 @@ export function useAuth() {
           setStatus(`Giriş hatası: ${activeError.message}`);
         }
         setLoading(false);
-        return;
+        return { ok: false, error: String(authError?.message || activeError?.message || 'signin_failed') };
       }
       row = { id: authData.user.id, username: normalizedUsername };
       activeError = null;
@@ -188,12 +190,14 @@ export function useAuth() {
 
     if (activeError || !row?.id) {
       setStatus('Kullanıcı adı veya şifre hatalı.');
+      setLoading(false);
+      return { ok: false, error: 'Kullanıcı adı veya şifre hatalı.' };
     } else {
       const profileSync = await ensureMemberProfile(row.id, row.username);
       if (!profileSync.ok) {
         setStatus(`Giriş yapıldı ama profil senkronu başarısız: ${profileSync.error}`);
         setLoading(false);
-        return;
+        return { ok: false, error: `Giriş yapıldı ama profil senkronu başarısız: ${profileSync.error}` };
       }
       const nextSession = { user: { id: row.id, username: row.username } };
       setSession(nextSession);
@@ -203,6 +207,7 @@ export function useAuth() {
       setStatus('Giriş yapıldı.');
     }
     setLoading(false);
+    return { ok: true };
   }
 
   async function signOut() {
