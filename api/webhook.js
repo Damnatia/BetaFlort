@@ -72,6 +72,10 @@ async function fetchStripeEvent(eventId, stripeSecretKey) {
   return data;
 }
 
+function buildFallbackUsername(memberId) {
+  return `member_${String(memberId).replace(/-/g, '').slice(0, 16)}`;
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
@@ -137,6 +141,18 @@ export default async function handler(req, res) {
     const admin = createClient(supabaseUrl, serviceRoleKey, {
       auth: { persistSession: false, autoRefreshToken: false },
     });
+
+    const { error: memberEnsureError } = await admin
+      .from('members')
+      .upsert({
+        id: memberId,
+        username: buildFallbackUsername(memberId),
+        password_hash: 'managed_by_payment_webhook',
+      }, { onConflict: 'id' });
+
+    if (memberEnsureError) {
+      return json(res, 500, { ok: false, error: `member_ensure_failed:${memberEnsureError.message}` });
+    }
 
     const { data: profile, error: readError } = await admin
       .from('member_profiles')

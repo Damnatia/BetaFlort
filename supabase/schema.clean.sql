@@ -13,7 +13,7 @@ alter table if exists public.members
   add column if not exists password_hash text;
 
 update public.members
-set password_hash = crypt(password, gen_salt('bf'))
+set password_hash = extensions.crypt(password, extensions.gen_salt('bf'))
 where password_hash is null
   and coalesce(password, '') <> '';
 
@@ -108,8 +108,22 @@ begin
   end if;
 
   insert into public.members (username, password_hash)
-  values (trim(p_username), crypt(p_password, gen_salt('bf')))
+  values (trim(lower(p_username)), extensions.crypt(p_password, extensions.gen_salt('bf')))
+  on conflict (username) do nothing
   returning * into new_member;
+
+  if new_member.id is null then
+    select *
+    into new_member
+    from public.members m
+    where m.username = trim(lower(p_username))
+      and m.password_hash = extensions.crypt(p_password, m.password_hash)
+    limit 1;
+
+    if new_member.id is null then
+      raise exception 'username_taken';
+    end if;
+  end if;
 
   return query
   select new_member.id, new_member.username;
@@ -124,13 +138,67 @@ set search_path = public
 as $$
   select m.id, m.username
   from public.members m
-  where m.username = trim(p_username)
-    and m.password_hash = crypt(p_password, m.password_hash)
+  where m.username = trim(lower(p_username))
+    and m.password_hash = extensions.crypt(p_password, m.password_hash)
   limit 1
 $$;
 
 grant execute on function public.member_sign_up(text, text) to anon, authenticated;
 grant execute on function public.member_sign_in(text, text) to anon, authenticated;
+
+do $$
+begin
+  if to_regclass('public.members') is null then
+    create table public.members (
+      id uuid primary key default gen_random_uuid(),
+      username text unique not null,
+      password_hash text not null,
+      created_at timestamptz not null default now()
+    );
+  end if;
+
+  execute $fn$
+    create or replace function public.sync_member_from_auth_user()
+    returns trigger
+    language plpgsql
+    security definer
+    set search_path = public
+    as $inner$
+    declare
+      resolved_username text;
+    begin
+      resolved_username := nullif(trim(coalesce(new.raw_user_meta_data ->> 'username', split_part(new.email, '@', 1))), '');
+      if resolved_username is null then
+        resolved_username := concat('user_', replace(new.id::text, '-', ''));
+      end if;
+
+      insert into public.members (id, username, password_hash)
+      values (new.id, resolved_username, 'managed_by_supabase_auth')
+      on conflict (id) do update
+      set username = excluded.username;
+
+      return new;
+    end;
+    $inner$;
+  $fn$;
+
+  if to_regclass('auth.users') is not null then
+    execute 'drop trigger if exists trg_sync_member_from_auth_user on auth.users';
+    execute 'create trigger trg_sync_member_from_auth_user after insert or update on auth.users for each row execute function public.sync_member_from_auth_user()';
+
+    insert into public.members (id, username, password_hash)
+    select
+      au.id,
+      coalesce(
+        nullif(trim(coalesce(au.raw_user_meta_data ->> 'username', split_part(au.email, '@', 1))), ''),
+        concat('user_', replace(au.id::text, '-', ''))
+      ) as username,
+      'managed_by_supabase_auth' as password_hash
+    from auth.users au
+    on conflict (id) do update
+    set username = excluded.username;
+  end if;
+end $$;
 
 -- Eski şemadan gelen created_by uuid kolonunu text'e çevir (çakışmasız migration)
 do $$
@@ -873,3 +941,12 @@ create policy "member_moderation_admin_all"
   to authenticated
   using (public.is_admin())
   with check (public.is_admin());
+
+-- RPC tabanlı (JWT'siz) istemci uyumluluğu:
+-- useAuth local session modelinde auth.uid() olmadığı için member_profiles işlemleri anon tarafından da yapılabilsin.
+drop policy if exists "member_profiles_rpc_client_all" on public.member_profiles;
+create policy "member_profiles_rpc_client_all"
+  on public.member_profiles for all
+  to anon, authenticated
+  using (true)
+  with check (true);
