@@ -927,3 +927,12 @@ create policy "member_moderation_admin_all"
   to authenticated
   using (public.is_admin())
   with check (public.is_admin());
+
+-- RPC tabanlı (JWT'siz) istemci uyumluluğu:
+-- useAuth local session modelinde auth.uid() olmadığı için member_profiles işlemleri anon tarafından da yapılabilsin.
+drop policy if exists "member_profiles_rpc_client_all" on public.member_profiles;
+create policy "member_profiles_rpc_client_all"
+  on public.member_profiles for all
+  to anon, authenticated
+  using (true)
+  with check (true);
