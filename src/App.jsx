@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from './supabase';
 import { useAuth } from './hooks/useAuth';
 const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD;
@@ -51,40 +51,12 @@ function buildHourlyOnlineMap(profiles, hourKey) {
 
 export default function App() {
   const [status, setStatus] = useState('');
-
   const { user: memberSession, loading: authLoading, signIn: supabaseSignIn, signUp: supabaseSignUp, signOut: supabaseSignOut } = useAuth();
-  
   const [mode, setMode] = useState('user');
   const [authForm, setAuthForm] = useState({ username: '', password: '' });
   const [isAdmin, setIsAdmin] = useState(false);
-
-  const loading = authLoading; // Eski loading değişkenini bozmamak için
+  const loading = authLoading; 
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
-  async function handleSignIn() {
-    if (mode === 'admin') {
-      if ([ADMIN_PASSWORD, ADMIN_PASSWORD2].includes(authForm.password)) {
-        setIsAdmin(true);
-        setStatus('Admin girişi başarılı.');
-      } else {
-        setStatus('Admin şifresi hatalı.');
-      }
-      return;
-    }
-    if (!authForm.username || !authForm.password) return setStatus('Kullanıcı adı ve şifre gerekli.');
-    if (authForm.password.length < 6) return setStatus('Şifre en az 6 karakter olmalı.');
-    const result = await supabaseSignIn(authForm.username, authForm.password);
-    if (!result?.ok) setStatus(result?.error || 'Giriş başarısız.');
-    else setStatus('Giriş yapıldı.');
-  }
-
-  async function handleSignUp() {
-    if (mode === 'admin') return setStatus('Admin kayıt olamaz.');
-    if (!authForm.username || !authForm.password) return setStatus('Kullanıcı adı ve şifre gerekli.');
-    if (authForm.password.length < 6) return setStatus('Şifre en az 6 karakter olmalı.');
-    const result = await supabaseSignUp(authForm.username, authForm.password);
-    if (!result?.ok) setStatus(result?.error || 'Kayıt başarısız.');
-    else setStatus('Kayıt başarılı!');
-  }
 
   const [virtualProfiles, setVirtualProfiles] = useState([]);
   const [selectedProfileId, setSelectedProfileId] = useState(null);
@@ -137,23 +109,16 @@ export default function App() {
   const [coinPurchaseModalOpen, setCoinPurchaseModalOpen] = useState(false);
   const [zeroCoinPromptDismissed, setZeroCoinPromptDismissed] = useState(false);
   const [coinCheckoutLoading, setCoinCheckoutLoading] = useState(false);
-  const [paymentSettings, setPaymentSettings] = useState({
-    provider: '',
-    webhook_url: DEFAULT_CHECKOUT_ENDPOINT,
-    is_active: false,
-  });
+  const [paymentSettings, setPaymentSettings] = useState({ provider: '', webhook_url: DEFAULT_CHECKOUT_ENDPOINT, is_active: false });
   const [hourKey, setHourKey] = useState(() => new Date().toISOString().slice(0, 13));
+  
   const chatBoxRef = useRef(null);
   const adminChatBoxRef = useRef(null);
   const profileListRef = useRef(null);
   const threadQueueRef = useRef(null);
   const typingTimeoutRef = useRef(null);
 
-  const selectedProfile = useMemo(
-    () => virtualProfiles.find((p) => p.id === selectedProfileId) || null,
-    [selectedProfileId, virtualProfiles]
-  );
-
+  const selectedProfile = useMemo(() => virtualProfiles.find((p) => p.id === selectedProfileId) || null, [selectedProfileId, virtualProfiles]);
   const sortedProfiles = useMemo(() => {
     return [...virtualProfiles].sort((a, b) => {
       const unreadA = unreadByProfile[a.id] || 0;
@@ -164,9 +129,9 @@ export default function App() {
   }, [virtualProfiles, unreadByProfile]);
 
   const loggedIn = !!memberSession || isAdmin;
-
   const profileById = useMemo(() => Object.fromEntries(virtualProfiles.map((p) => [p.id, p])), [virtualProfiles]);
   const selectedThreadProfile = useMemo(() => (selectedThread ? profileById[selectedThread.virtual_profile_id] : null), [selectedThread, profileById]);
+  
   const sortedIncomingThreads = useMemo(() => {
     return [...incomingThreads].sort((a, b) => {
       const waitA = a.last_sender_role === 'member' ? 1 : 0;
@@ -186,11 +151,7 @@ export default function App() {
         return acc + Math.max(diff, 0);
       }, 0) / waiting.length
       : 0;
-    return {
-      waitingCount: waiting.length,
-      avgWaitMin,
-      lastReplyMin: selectedThread?.last_message_at ? (now - new Date(selectedThread.last_message_at).getTime()) / 60000 : 0,
-    };
+    return { waitingCount: waiting.length, avgWaitMin, lastReplyMin: selectedThread?.last_message_at ? (now - new Date(selectedThread.last_message_at).getTime()) / 60000 : 0 };
   }, [incomingThreads, selectedThread, adminUnreadByThread]);
 
   const interestScore = useMemo(() => {
@@ -202,7 +163,7 @@ export default function App() {
       return `${now.getUTCFullYear()}-W${Math.ceil(dayOfYear / 7)}`;
     })();
     const seed = `${weekKey}-${memberSession?.id || 'guest'}-${selectedProfileId}`;
-    const score = 70 + (hashToInt(seed) % 31); // 70-100
+    const score = 70 + (hashToInt(seed) % 31);
     return Math.min(100, Math.max(70, score));
   }, [selectedProfileId, memberSession?.id]);
 
@@ -279,8 +240,32 @@ export default function App() {
     return { hasPhoto, hasHobbies, hasThreeActions, completed, currentStep };
   }, [memberProfile.photo_url, memberProfile.hobbies, onboardingActionCount]);
 
-  function threadKey(memberId, profileId) {
-    return `${memberId}::${profileId}`;
+  function threadKey(memberId, profileId) { return `${memberId}::${profileId}`; }
+
+  async function handleSignIn() {
+    if (mode === 'admin') {
+      if ([ADMIN_PASSWORD, ADMIN_PASSWORD2].includes(authForm.password)) {
+        setIsAdmin(true);
+        setStatus('Admin girişi başarılı.');
+      } else {
+        setStatus('Admin şifresi hatalı.');
+      }
+      return;
+    }
+    if (!authForm.username || !authForm.password) return setStatus('Kullanıcı adı ve şifre gerekli.');
+    if (authForm.password.length < 6) return setStatus('Şifre en az 6 karakter olmalı.');
+    const result = await supabaseSignIn(authForm.username, authForm.password);
+    if (!result?.ok) setStatus(result?.error || 'Giriş başarısız.');
+    else setStatus('Giriş yapıldı.');
+  }
+
+  async function handleSignUp() {
+    if (mode === 'admin') return setStatus('Admin kayıt olamaz.');
+    if (!authForm.username || !authForm.password) return setStatus('Kullanıcı adı ve şifre gerekli.');
+    if (authForm.password.length < 6) return setStatus('Şifre en az 6 karakter olmalı.');
+    const result = await supabaseSignUp(authForm.username, authForm.password);
+    if (!result?.ok) setStatus(result?.error || 'Kayıt başarısız.');
+    else setStatus('Kayıt başarılı!');
   }
 
   async function selectRows(table, buildQuery) {
@@ -308,9 +293,7 @@ export default function App() {
     return new Date(ts).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
   }
 
-  function getRandomItem(arr) {
-    return arr[Math.floor(Math.random() * arr.length)];
-  }
+  function getRandomItem(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 
   function buildRandomVirtualProfile() {
     return {
@@ -343,9 +326,7 @@ export default function App() {
       gain.connect(ctx.destination);
       oscillator.start();
       oscillator.stop(ctx.currentTime + 0.25);
-    } catch {
-      // Sessizce geç
-    }
+    } catch { }
   }
 
   useEffect(() => {
@@ -457,15 +438,7 @@ export default function App() {
   useEffect(() => {
     if (!memberSession || isAdmin) return;
     fetchOwnProfile();
-  }, [memberSession, isAdmin]);
-
-  useEffect(() => {
-    if (!memberSession || isAdmin) return;
     fetchOnboardingActionCount();
-  }, [memberSession, isAdmin]);
-
-  useEffect(() => {
-    if (!memberSession || isAdmin) return;
     setUserView('discover');
   }, [memberSession, isAdmin]);
 
@@ -533,9 +506,7 @@ export default function App() {
       })
       .subscribe();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return () => supabase.removeChannel(channel);
   }, [loggedIn, isAdmin, memberSession, selectedProfileId, selectedThread, userView]);
 
   useEffect(() => {
@@ -567,9 +538,7 @@ export default function App() {
         }
       });
 
-    return () => {
-      supabase.removeChannel(presenceChannel);
-    };
+    return () => supabase.removeChannel(presenceChannel);
   }, [loggedIn, isAdmin, memberSession?.id, virtualProfiles]);
 
   useEffect(() => {
@@ -658,17 +627,11 @@ export default function App() {
   }
 
   async function fetchOwnProfile() {
-    const { data, error } = await supabase
-      .from('member_profiles')
-      .select('*')
-      .eq('member_id', memberSession.id)
-      .maybeSingle();
+    const { data, error } = await supabase.from('member_profiles').select('*').eq('member_id', memberSession.id).maybeSingle();
 
     if (error) return setStatus(error.message);
     if (!data) {
-      await supabase
-        .from('member_profiles')
-        .upsert({ member_id: memberSession.id, coin_balance: 100, status_emoji: '🙂' }, { onConflict: 'member_id' });
+      await supabase.from('member_profiles').upsert({ member_id: memberSession.id, coin_balance: 100, status_emoji: '🙂' }, { onConflict: 'member_id' });
       return setMemberProfile(initialMemberProfile);
     }
 
@@ -685,20 +648,13 @@ export default function App() {
 
   async function fetchOnboardingActionCount() {
     if (!memberSession) return;
-    const { data, error } = await supabase
-      .from('engagement_events')
-      .select('id')
-      .eq('member_id', memberSession.id)
-      .eq('event_type', 'member_message')
-      .limit(50);
-
+    const { data, error } = await supabase.from('engagement_events').select('id').eq('member_id', memberSession.id).eq('event_type', 'member_message').limit(50);
     if (error) return setStatus(error.message);
     setOnboardingActionCount(Math.min((data || []).length, 50));
   }
 
   async function saveOwnProfile() {
     if (!memberSession) return;
-
     const payload = {
       member_id: memberSession.id,
       age: memberProfile.age ? Number(memberProfile.age) : null,
@@ -709,11 +665,7 @@ export default function App() {
       coin_balance: Number(memberProfile.coin_balance ?? 100),
       contact_phone: memberProfile.contact_phone || null,
     };
-
-    const { error } = await supabase
-      .from('member_profiles')
-      .upsert(payload, { onConflict: 'member_id' });
-
+    const { error } = await supabase.from('member_profiles').upsert(payload, { onConflict: 'member_id' });
     if (error) return setStatus(error.message);
     setStatus('Profil bilgilerin kaydedildi.');
   }
@@ -724,15 +676,8 @@ export default function App() {
     if (current < amount) return false;
 
     const nextBalance = current - amount;
-    const { error } = await supabase
-      .from('member_profiles')
-      .update({ coin_balance: nextBalance })
-      .eq('member_id', memberSession.id);
-
-    if (error) {
-      setStatus(error.message);
-      return false;
-    }
+    const { error } = await supabase.from('member_profiles').update({ coin_balance: nextBalance }).eq('member_id', memberSession.id);
+    if (error) { setStatus(error.message); return false; }
 
     setMemberProfile((prev) => ({ ...prev, coin_balance: nextBalance }));
     return true;
@@ -745,28 +690,16 @@ export default function App() {
     }
 
     const nextBalance = Number(memberProfile.coin_balance || 0) + 5000;
-    const { error } = await supabase
-      .from('member_profiles')
-      .upsert({
-        member_id: memberSession.id,
-        coin_balance: nextBalance,
-        contact_phone: memberProfile.contact_phone,
-      }, { onConflict: 'member_id' });
-
+    const { error } = await supabase.from('member_profiles').upsert({ member_id: memberSession.id, coin_balance: nextBalance, contact_phone: memberProfile.contact_phone }, { onConflict: 'member_id' });
     if (error) return setStatus(error.message);
     setMemberProfile((prev) => ({ ...prev, coin_balance: nextBalance }));
     setStatus('Test satın alma başarılı: 5000 jeton yüklendi.');
   }
 
- async function handleSignOut() {
-    if (isAdmin) {
-      setIsAdmin(false);
-      setStatus('Admin çıkışı yapıldı.');
-    } else {
-      await supabaseSignOut();
-    }
+  async function handleSignOut() {
+    if (isAdmin) { setIsAdmin(false); setStatus('Admin çıkışı yapıldı.'); } 
+    else { await supabaseSignOut(); }
     
-    // UI State'lerini sıfırla
     setSelectedProfileId(null);
     setMessages([]);
     setIncomingThreads([]);
@@ -782,76 +715,39 @@ export default function App() {
       const data = await selectRows('virtual_profiles', (q) => q.order('created_at', { ascending: true }));
       setVirtualProfiles(data || []);
       if (!selectedProfileId && data?.length) setSelectedProfileId(data[0].id);
-    } catch (error) {
-      setStatus(error.message);
-    }
+    } catch (error) { setStatus(error.message); }
   }
 
   async function fetchUnreadCounts() {
     if (!memberSession || isAdmin) return;
-    const { data, error } = await supabase
-      .from('messages')
-      .select('virtual_profile_id')
-      .eq('member_id', memberSession.id)
-      .eq('sender_role', 'virtual')
-      .eq('seen_by_member', false);
-
+    const { data, error } = await supabase.from('messages').select('virtual_profile_id').eq('member_id', memberSession.id).eq('sender_role', 'virtual').eq('seen_by_member', false);
     if (error) return setStatus(error.message);
-
     const counts = (data || []).reduce((acc, row) => {
-      const key = row.virtual_profile_id;
-      acc[key] = (acc[key] || 0) + 1;
+      acc[row.virtual_profile_id] = (acc[row.virtual_profile_id] || 0) + 1;
       return acc;
     }, {});
-
     setUnreadByProfile(counts);
   }
 
   async function fetchMessages(profileId) {
-    const { data, error } = await supabase
-      .from('messages')
-      .select('*')
-      .eq('virtual_profile_id', profileId)
-      .eq('member_id', memberSession.id)
-      .order('created_at', { ascending: true });
-
+    const { data, error } = await supabase.from('messages').select('*').eq('virtual_profile_id', profileId).eq('member_id', memberSession.id).order('created_at', { ascending: true });
     if (error) return setStatus(error.message);
     setMessages(data || []);
 
-    await supabase
-      .from('messages')
-      .update({ seen_by_member: true, seen_by_member_at: new Date().toISOString() })
-      .eq('virtual_profile_id', profileId)
-      .eq('member_id', memberSession.id)
-      .eq('sender_role', 'virtual')
-      .eq('seen_by_member', false);
-
+    await supabase.from('messages').update({ seen_by_member: true, seen_by_member_at: new Date().toISOString() }).eq('virtual_profile_id', profileId).eq('member_id', memberSession.id).eq('sender_role', 'virtual').eq('seen_by_member', false);
     setUnreadByProfile((prev) => ({ ...prev, [profileId]: 0 }));
   }
 
   async function sendMessage() {
     if (!memberSession || !selectedProfileId || !newMessage.trim()) return;
     const hasCoin = await consumeCoins(COIN_COST_PER_MESSAGE);
-    if (!hasCoin) {
-      setCoinPurchaseModalOpen(true);
-      return setStatus(`Yetersiz jeton. Bir mesaj için ${COIN_COST_PER_MESSAGE} jeton gerekir.`);
-    }
+    if (!hasCoin) { setCoinPurchaseModalOpen(true); return setStatus(`Yetersiz jeton.`); }
 
-
-
-    const slashCommands = {
-      '/selam': 'Selam 👋',
-      '/kahve': 'Kahve içelim mi? ☕',
-    };
+    const slashCommands = { '/selam': 'Selam 👋', '/kahve': 'Kahve içelim mi? ☕' };
     const normalizedMessage = slashCommands[newMessage.trim().toLowerCase()] || newMessage.trim();
 
     const { error } = await supabase.from('messages').insert({
-      member_id: memberSession.id,
-      virtual_profile_id: selectedProfileId,
-      sender_role: 'member',
-      content: normalizedMessage,
-      seen_by_member: true,
-      seen_by_admin: false,
+      member_id: memberSession.id, virtual_profile_id: selectedProfileId, sender_role: 'member', content: normalizedMessage, seen_by_member: true, seen_by_admin: false,
     });
     if (error) return setStatus(error.message);
     recordEngagement('member_message', memberSession.id, selectedProfileId, { source: 'chat_input' });
@@ -863,25 +759,13 @@ export default function App() {
   async function sendReaction(profileId, reactionType) {
     if (!memberSession || !profileId) return;
     const hasCoin = await consumeCoins(COIN_COST_PER_MESSAGE);
-    if (!hasCoin) {
-      setCoinPurchaseModalOpen(true);
-      return setStatus(`Yetersiz jeton. Etkileşim için ${COIN_COST_PER_MESSAGE} jeton gerekir.`);
-    }
-    const templates = {
-      heart: '💘 Kalp gönderdim.',
-      wave: '👋 Selam, sana el salladım.',
-      like: '👍 Profilini beğendim.',
-    };
+    if (!hasCoin) { setCoinPurchaseModalOpen(true); return setStatus(`Yetersiz jeton.`); }
+    const templates = { heart: '💘 Kalp gönderdim.', wave: '👋 Selam, sana el salladım.', like: '👍 Profilini beğendim.' };
     const content = templates[reactionType];
     if (!content) return;
 
     const { error } = await supabase.from('messages').insert({
-      member_id: memberSession.id,
-      virtual_profile_id: profileId,
-      sender_role: 'member',
-      content,
-      seen_by_member: true,
-      seen_by_admin: false,
+      member_id: memberSession.id, virtual_profile_id: profileId, sender_role: 'member', content, seen_by_member: true, seen_by_admin: false,
     });
     if (error) return setStatus(error.message);
     recordEngagement('member_message', memberSession.id, profileId, { source: `reaction_${reactionType}` });
@@ -892,59 +776,31 @@ export default function App() {
   async function createVirtualProfile() {
     const auto = buildRandomVirtualProfile();
     const payload = {
-      name: profileForm.name || auto.name,
-      age: Number(profileForm.age || auto.age),
-      city: profileForm.city || auto.city,
-      gender: profileForm.gender || 'Kadın',
-      hobbies: profileForm.hobbies || auto.hobbies,
-      photo_url: profileForm.photo_url,
+      name: profileForm.name || auto.name, age: Number(profileForm.age || auto.age), city: profileForm.city || auto.city, gender: profileForm.gender || 'Kadın', hobbies: profileForm.hobbies || auto.hobbies, photo_url: profileForm.photo_url,
     };
-
-    if (!payload.photo_url) return setStatus('Fotoğraf yükleyip Kaydet tuşuna bas. İsim/şehir/yaş otomatik üretilecek.');
+    if (!payload.photo_url) return setStatus('Fotoğraf yükleyip Kaydet tuşuna bas.');
 
     let { error } = await supabase.from('virtual_profiles').insert(payload);
-
     if (error?.message?.includes("Could not find the 'photo_url' column")) {
-      const retry = await supabase.from('virtual_profiles').insert({
-        name: payload.name,
-        age: payload.age,
-        city: payload.city,
-        gender: payload.gender,
-        hobbies: payload.hobbies,
-      });
+      const retry = await supabase.from('virtual_profiles').insert({ name: payload.name, age: payload.age, city: payload.city, gender: payload.gender, hobbies: payload.hobbies });
       error = retry.error;
-      if (!error) {
-        setStatus("Profil kaydedildi. Fotoğraf kolonu henüz migration almadığı için görsel eklenmedi. SQL migration'ı tekrar çalıştır.");
-      }
     }
-
     if (error) return setStatus(error.message);
     setProfileForm(initialProfile);
     fetchVirtualProfiles();
     fetchIncomingThreads();
-    setStatus(`Sanal profil oluşturuldu: ${payload.name}, ${payload.city}`);
+    setStatus(`Sanal profil oluşturuldu: ${payload.name}`);
   }
 
   async function fetchIncomingThreads() {
     try {
       const data = await selectRows('admin_threads', (q) => q.order('last_message_at', { ascending: false }));
       setIncomingThreads(data || []);
-    } catch (error) {
-      setStatus(error.message);
-    }
+    } catch (error) { setStatus(error.message); }
   }
 
   async function recordEngagement(eventType, memberId, virtualProfileId, meta = {}) {
-    try {
-      await supabase.from('engagement_events').insert({
-        event_type: eventType,
-        member_id: memberId,
-        virtual_profile_id: virtualProfileId,
-        meta,
-      });
-    } catch {
-      // tablo kurulmamışsa akışı bozma
-    }
+    try { await supabase.from('engagement_events').insert({ event_type: eventType, member_id: memberId, virtual_profile_id: virtualProfileId, meta }); } catch {}
   }
 
   async function fetchEngagementInsights() {
@@ -952,20 +808,10 @@ export default function App() {
     const since = new Date(Date.now() - 1000 * 60 * 60 * 24 * 7).toISOString();
     let rows = [];
 
-    const events = await supabase
-      .from('engagement_events')
-      .select('created_at, virtual_profile_id, event_type')
-      .eq('event_type', 'member_message')
-      .gte('created_at', since);
-
-    if (!events.error && events.data?.length) {
-      rows = events.data;
-    } else {
-      const fallback = await supabase
-        .from('messages')
-        .select('created_at, virtual_profile_id, sender_role')
-        .eq('sender_role', 'member')
-        .gte('created_at', since);
+    const events = await supabase.from('engagement_events').select('created_at, virtual_profile_id, event_type').eq('event_type', 'member_message').gte('created_at', since);
+    if (!events.error && events.data?.length) { rows = events.data; } 
+    else {
+      const fallback = await supabase.from('messages').select('created_at, virtual_profile_id, sender_role').eq('sender_role', 'member').gte('created_at', since);
       rows = (fallback.data || []).map((r) => ({ ...r, event_type: 'member_message' }));
     }
 
@@ -978,54 +824,29 @@ export default function App() {
       profileMap.set(row.virtual_profile_id, (profileMap.get(row.virtual_profile_id) || 0) + 1);
     });
 
-    const topHours = [...hourMap.entries()]
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 3)
-      .map(([hour, count]) => ({ label: `${String(hour).padStart(2, '0')}:00`, count }));
-
-    const topProfiles = [...profileMap.entries()]
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 4)
-      .map(([profileId, count]) => ({
-        name: profileById[profileId]?.name || 'Bilinmeyen Profil',
-        count,
-      }));
-
+    const topHours = [...hourMap.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3).map(([hour, count]) => ({ label: `${String(hour).padStart(2, '0')}:00`, count }));
+    const topProfiles = [...profileMap.entries()].sort((a, b) => b[1] - a[1]).slice(0, 4).map(([profileId, count]) => ({ name: profileById[profileId]?.name || 'Bilinmeyen Profil', count }));
     setEngagementInsights({ topHours, topProfiles });
   }
 
   async function fetchAdminStats() {
     if (!isAdmin) return;
     const start = new Date();
-    if (statsRange === 'daily') {
-      start.setHours(0, 0, 0, 0);
-    } else if (statsRange === 'weekly') {
-      start.setDate(start.getDate() - 7);
-    } else {
-      start.setMonth(start.getMonth() - 1);
-    }
+    if (statsRange === 'daily') start.setHours(0, 0, 0, 0);
+    else if (statsRange === 'weekly') start.setDate(start.getDate() - 7);
+    else start.setMonth(start.getMonth() - 1);
     const startIso = start.toISOString();
 
     const [{ data: todayMessages, error: msgErr }, { data: todayMembers, error: memberErr }] = await Promise.all([
-      supabase
-        .from('messages')
-        .select('member_id, virtual_profile_id, sender_role, created_at')
-        .gte('created_at', startIso),
-      supabase
-        .from('members')
-        .select('id, created_at')
-        .gte('created_at', startIso),
+      supabase.from('messages').select('member_id, virtual_profile_id, sender_role, created_at').gte('created_at', startIso),
+      supabase.from('members').select('id, created_at').gte('created_at', startIso),
     ]);
 
-    if (msgErr || memberErr) {
-      setStatus(msgErr?.message || memberErr?.message || 'Stats alınamadı.');
-      return;
-    }
+    if (msgErr || memberErr) return setStatus(msgErr?.message || memberErr?.message || 'Stats alınamadı.');
 
     const messages = todayMessages || [];
     const memberMessages = messages.filter((m) => m.sender_role === 'member');
     const adminReplies = messages.filter((m) => m.sender_role === 'virtual');
-
     const activeThreadKeys = new Set(messages.map((m) => `${m.member_id}::${m.virtual_profile_id}`));
     const respondedThreadKeys = new Set();
     const responseMinutes = [];
@@ -1041,9 +862,8 @@ export default function App() {
       rows.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
       let lastMemberTs = null;
       rows.forEach((row) => {
-        if (row.sender_role === 'member') {
-          lastMemberTs = row.created_at;
-        } else if (row.sender_role === 'virtual' && lastMemberTs) {
+        if (row.sender_role === 'member') lastMemberTs = row.created_at;
+        else if (row.sender_role === 'virtual' && lastMemberTs) {
           respondedThreadKeys.add(key);
           const diffMin = (new Date(row.created_at).getTime() - new Date(lastMemberTs).getTime()) / 60000;
           if (diffMin >= 0) responseMinutes.push(diffMin);
@@ -1052,209 +872,98 @@ export default function App() {
       });
     });
 
-    const avgResponseMinToday = responseMinutes.length
-      ? responseMinutes.reduce((a, b) => a + b, 0) / responseMinutes.length
-      : 0;
-
     setAdminStats({
-      totalMessagesToday: messages.length,
-      memberMessagesToday: memberMessages.length,
-      adminRepliesToday: adminReplies.length,
-      respondedThreadsToday: respondedThreadKeys.size,
-      newMembersToday: (todayMembers || []).length,
-      activeThreadsToday: activeThreadKeys.size,
-      avgResponseMinToday,
+      totalMessagesToday: messages.length, memberMessagesToday: memberMessages.length, adminRepliesToday: adminReplies.length,
+      respondedThreadsToday: respondedThreadKeys.size, newMembersToday: (todayMembers || []).length, activeThreadsToday: activeThreadKeys.size,
+      avgResponseMinToday: responseMinutes.length ? responseMinutes.reduce((a, b) => a + b, 0) / responseMinutes.length : 0,
     });
   }
 
   async function fetchThreadMessages(memberId, profileId) {
-    const { data, error } = await supabase
-      .from('messages')
-      .select('*')
-      .eq('member_id', memberId)
-      .eq('virtual_profile_id', profileId)
-      .order('created_at', { ascending: true });
-
+    const { data, error } = await supabase.from('messages').select('*').eq('member_id', memberId).eq('virtual_profile_id', profileId).order('created_at', { ascending: true });
     if (error) return setStatus(error.message);
     setThreadMessages(data || []);
-
-    await supabase
-      .from('messages')
-      .update({ seen_by_admin: true, seen_by_admin_at: new Date().toISOString() })
-      .eq('member_id', memberId)
-      .eq('virtual_profile_id', profileId)
-      .eq('sender_role', 'member')
-      .eq('seen_by_admin', false);
+    await supabase.from('messages').update({ seen_by_admin: true, seen_by_admin_at: new Date().toISOString() }).eq('member_id', memberId).eq('virtual_profile_id', profileId).eq('sender_role', 'member').eq('seen_by_admin', false);
   }
 
   async function fetchQuickFacts(memberId, profileId) {
-    const { data, error } = await supabase
-      .from('thread_quick_facts')
-      .select('notes')
-      .eq('member_id', memberId)
-      .eq('virtual_profile_id', profileId)
-      .maybeSingle();
-    if (error) return;
-    setQuickFactsText(data?.notes || '');
+    const { data, error } = await supabase.from('thread_quick_facts').select('notes').eq('member_id', memberId).eq('virtual_profile_id', profileId).maybeSingle();
+    if (!error) setQuickFactsText(data?.notes || '');
   }
 
   async function fetchMemberProfile(memberId) {
-    const { data, error } = await supabase
-      .from('member_profiles')
-      .select('age, hobbies, city, photo_url, status_emoji')
-      .eq('member_id', memberId)
-      .maybeSingle();
-    if (error) return setSelectedMemberProfile(null);
-    setSelectedMemberProfile(data || null);
+    const { data, error } = await supabase.from('member_profiles').select('age, hobbies, city, photo_url, status_emoji').eq('member_id', memberId).maybeSingle();
+    setSelectedMemberProfile(error ? null : (data || null));
   }
 
   async function fetchMemberModeration(memberId) {
-    const { data, error } = await supabase
-      .from('member_moderation')
-      .select('notes, tags, is_blacklisted')
-      .eq('member_id', memberId)
-      .maybeSingle();
-
-    if (error) return setMemberModeration({ note: '', tags: '', blacklisted: false });
-    setMemberModeration({
-      note: data?.notes || '',
-      tags: (data?.tags || []).join(', '),
-      blacklisted: !!data?.is_blacklisted,
-    });
+    const { data, error } = await supabase.from('member_moderation').select('notes, tags, is_blacklisted').eq('member_id', memberId).maybeSingle();
+    setMemberModeration(error ? { note: '', tags: '', blacklisted: false } : { note: data?.notes || '', tags: (data?.tags || []).join(', '), blacklisted: !!data?.is_blacklisted });
   }
 
   async function saveMemberModeration() {
     if (!selectedThread) return;
-    const payload = {
-      member_id: selectedThread.member_id,
-      notes: memberModeration.note,
-      tags: memberModeration.tags
-        .split(',')
-        .map((x) => x.trim())
-        .filter(Boolean),
-      is_blacklisted: !!memberModeration.blacklisted,
-    };
-
-    const { error } = await supabase
-      .from('member_moderation')
-      .upsert(payload, { onConflict: 'member_id' });
-
+    const payload = { member_id: selectedThread.member_id, notes: memberModeration.note, tags: memberModeration.tags.split(',').map((x) => x.trim()).filter(Boolean), is_blacklisted: !!memberModeration.blacklisted };
+    const { error } = await supabase.from('member_moderation').upsert(payload, { onConflict: 'member_id' });
     if (error) return setStatus(error.message);
     setStatus('Moderasyon ayarları kaydedildi.');
   }
 
   async function fetchPaymentSettings() {
-    const { data, error } = await supabase
-      .from('payment_gateway_settings')
-      .select('provider, webhook_url, is_active')
-      .eq('id', 1)
-      .maybeSingle();
-
-    if (error) return setStatus(error.message);
-    if (!data) return;
-    setPaymentSettings({
-      provider: data.provider || '',
-      webhook_url: data.webhook_url || DEFAULT_CHECKOUT_ENDPOINT,
-      is_active: !!data.is_active,
-    });
+    const { data, error } = await supabase.from('payment_gateway_settings').select('provider, webhook_url, is_active').eq('id', 1).maybeSingle();
+    if (!error && data) setPaymentSettings({ provider: data.provider || '', webhook_url: data.webhook_url || DEFAULT_CHECKOUT_ENDPOINT, is_active: !!data.is_active });
   }
 
   async function fetchPublicPaymentSettings() {
-    const { data, error } = await supabase
-      .from('payment_gateway_settings')
-      .select('provider, webhook_url, is_active')
-      .eq('id', 1)
-      .maybeSingle();
-
-    if (error) return setStatus(error.message);
-    if (!data) return;
-    setPaymentSettings((prev) => ({
-      ...prev,
-      provider: data.provider || '',
-      webhook_url: data.webhook_url || DEFAULT_CHECKOUT_ENDPOINT,
-      is_active: !!data.is_active,
-    }));
+    const { data, error } = await supabase.from('payment_gateway_settings').select('provider, webhook_url, is_active').eq('id', 1).maybeSingle();
+    if (!error && data) setPaymentSettings((prev) => ({ ...prev, provider: data.provider || '', webhook_url: data.webhook_url || DEFAULT_CHECKOUT_ENDPOINT, is_active: !!data.is_active }));
   }
 
   async function savePaymentSettings() {
-    const { error } = await supabase
-      .from('payment_gateway_settings')
-      .upsert({
-        id: 1,
-        provider: paymentSettings.provider,
-        webhook_url: DEFAULT_CHECKOUT_ENDPOINT,
-        is_active: paymentSettings.is_active,
-      }, { onConflict: 'id' });
-
+    const { error } = await supabase.from('payment_gateway_settings').upsert({ id: 1, provider: paymentSettings.provider, webhook_url: DEFAULT_CHECKOUT_ENDPOINT, is_active: paymentSettings.is_active }, { onConflict: 'id' });
     if (error) return setStatus(error.message);
     setStatus('Ödeme API ayarları kaydedildi.');
   }
 
   async function requestCoinCheckout(coinAmount) {
     if (!memberSession) return;
-    if (!paymentSettings.is_active) {
-      return setStatus('Ödeme sistemi aktif değil. Lütfen yönetici ayarlarını kontrol et.');
-    }
-
+    if (!paymentSettings.is_active) return setStatus('Ödeme sistemi aktif değil.');
     setCoinCheckoutLoading(true);
     try {
       const response = await fetch(DEFAULT_CHECKOUT_ENDPOINT, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          member_id: memberSession.id,
-          coin_amount: coinAmount,
-          provider: paymentSettings.provider || 'stripe',
-          source: 'flortbeta_member_coins_page',
-        }),
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ member_id: memberSession.id, coin_amount: coinAmount, provider: paymentSettings.provider || 'stripe', source: 'flortbeta_member_coins_page' }),
       });
-
       const result = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        throw new Error(result.error || 'Checkout endpoint hata döndürdü.');
-      }
-      if (!result.url) {
-        throw new Error('Checkout endpoint geçerli bir url döndürmedi.');
-      }
+      if (!response.ok) throw new Error(result.error || 'Checkout endpoint hata döndürdü.');
+      if (!result.url) throw new Error('Checkout endpoint geçerli bir url döndürmedi.');
       window.location.href = result.url;
-    } catch (err) {
-      setStatus(err.message || 'Checkout URL yönlendirmesi sırasında hata oluştu.');
-    } finally {
-      setCoinCheckoutLoading(false);
-    }
+    } catch (err) { setStatus(err.message || 'Checkout yönlendirmesi sırasında hata oluştu.'); } 
+    finally { setCoinCheckoutLoading(false); }
   }
 
   async function saveQuickFacts() {
     if (!selectedThread) return;
-    const { error } = await supabase
-      .from('thread_quick_facts')
-      .upsert({
-        member_id: selectedThread.member_id,
-        virtual_profile_id: selectedThread.virtual_profile_id,
-        notes: quickFactsText,
-      }, { onConflict: 'member_id,virtual_profile_id' });
+    const { error } = await supabase.from('thread_quick_facts').upsert({ member_id: selectedThread.member_id, virtual_profile_id: selectedThread.virtual_profile_id, notes: quickFactsText }, { onConflict: 'member_id,virtual_profile_id' });
     if (error) return setStatus(error.message);
     setStatus('Quick Facts kaydedildi.');
   }
 
   async function fetchRegisteredMembers() {
     setLoadingMembers(true);
-    const { data, error } = await supabase
-      .from('member_profiles')
-      .select('member_id, coin_balance, contact_phone, updated_at')
-      .order('updated_at', { ascending: false });
-
+    const { data, error } = await supabase.from('member_profiles').select('member_id, coin_balance, contact_phone, updated_at').order('updated_at', { ascending: false });
+    
+    // members tablosundan isimleri de çekmek için (eğer public.members'a erişim varsa) ek query yapabilirsin, şimdilik UI'da kullanıcı olarak göstereceğiz
     setLoadingMembers(false);
     if (error) return setStatus('Üye listesi alınamadı: ' + error.message);
-
-    const rows = (data || []).map((p) => ({
-      id: p.member_id,
-      username: 'Kullanıcı', 
-      coin_balance: p.coin_balance,
-      contact_phone: p.contact_phone,
-      created_at: p.updated_at
-    }));
-    setRegisteredMembers(rows);
+    
+    setRegisteredMembers((data || []).map((p) => ({ 
+      id: p.member_id, 
+      username: p.member_id, // Gerçek username'i members tablosundan almak gerekebilir, şimdilik ID'yi gösteriyoruz
+      coin_balance: p.coin_balance, 
+      contact_phone: p.contact_phone, 
+      created_at: p.updated_at 
+    })));
   }
 
   async function deleteMember(memberId) {
@@ -1271,44 +980,23 @@ export default function App() {
 
   async function sendAdminReply() {
     if (!selectedThread || !adminReply.trim()) return;
-    if (memberModeration.blacklisted) {
-      return setStatus('Bu kullanıcı kara listede. Yanıt göndermeden önce moderasyon ayarını güncelle.');
-    }
+    if (memberModeration.blacklisted) return setStatus('Bu kullanıcı kara listede. Yanıt göndermeden önce moderasyon ayarını güncelle.');
+    
     const { error } = await supabase.from('messages').insert({
-      member_id: selectedThread.member_id,
-      virtual_profile_id: selectedThread.virtual_profile_id,
-      sender_role: 'virtual',
-      content: adminReply.trim(),
-      seen_by_member: false,
-      seen_by_admin: true,
+      member_id: selectedThread.member_id, virtual_profile_id: selectedThread.virtual_profile_id, sender_role: 'virtual', content: adminReply.trim(), seen_by_member: false, seen_by_admin: true,
     });
     if (error) return setStatus(error.message);
     recordEngagement('admin_reply', selectedThread.member_id, selectedThread.virtual_profile_id, { source: 'admin_reply' });
-    setAdminReply('');
-    setAiSuggestions([]);
-    fetchIncomingThreads();
-    fetchThreadMessages(selectedThread.member_id, selectedThread.virtual_profile_id);
-    fetchEngagementInsights();
+    setAdminReply(''); setAiSuggestions([]); fetchIncomingThreads(); fetchThreadMessages(selectedThread.member_id, selectedThread.virtual_profile_id); fetchEngagementInsights();
     setStatus('Yanıt gönderildi.');
   }
 
   async function updateSelectedThreadTag(tag) {
     if (!selectedThread) return;
     try {
-      await updateRows(
-        'admin_threads',
-        { status_tag: tag },
-        (q) => q.eq('member_id', selectedThread.member_id).eq('virtual_profile_id', selectedThread.virtual_profile_id)
-      );
-      await insertRows('thread_events', {
-        member_id: selectedThread.member_id,
-        virtual_profile_id: selectedThread.virtual_profile_id,
-        event_type: 'status_change',
-        meta: { status_tag: tag },
-      });
-    } catch (error) {
-      return setStatus(error.message);
-    }
+      await updateRows('admin_threads', { status_tag: tag }, (q) => q.eq('member_id', selectedThread.member_id).eq('virtual_profile_id', selectedThread.virtual_profile_id));
+      await insertRows('thread_events', { member_id: selectedThread.member_id, virtual_profile_id: selectedThread.virtual_profile_id, event_type: 'status_change', meta: { status_tag: tag } });
+    } catch (error) { return setStatus(error.message); }
     setSelectedThread((prev) => (prev ? { ...prev, status_tag: tag } : prev));
     fetchIncomingThreads();
   }
@@ -1320,1022 +1008,613 @@ export default function App() {
 
     const rows = selectedKeys.map((key) => {
       const [member_id, virtual_profile_id] = key.split('::');
-      return {
-        member_id,
-        virtual_profile_id,
-        sender_role: 'virtual',
-        content: bulkTemplate,
-        seen_by_member: false,
-        seen_by_admin: true,
-      };
+      return { member_id, virtual_profile_id, sender_role: 'virtual', content: bulkTemplate, seen_by_member: false, seen_by_admin: true };
     });
 
     try {
       await insertRows('messages', rows);
-      await insertRows('thread_events', rows.map((row) => ({
-        member_id: row.member_id,
-        virtual_profile_id: row.virtual_profile_id,
-        event_type: 'bulk_sent',
-        meta: { template: bulkTemplate },
-      })));
-    } catch (error) {
-      return setStatus(error.message);
-    }
-    setSelectedThreadKeys({});
-    setStatus(`${rows.length} thread için bulk mesaj gönderildi.`);
-    fetchIncomingThreads();
+      await insertRows('thread_events', rows.map((row) => ({ member_id: row.member_id, virtual_profile_id: row.virtual_profile_id, event_type: 'bulk_sent', meta: { template: bulkTemplate } })));
+    } catch (error) { return setStatus(error.message); }
+    setSelectedThreadKeys({}); setStatus(`${rows.length} thread için bulk mesaj gönderildi.`); fetchIncomingThreads();
   }
 
   async function fetchAiSuggestions() {
     if (!OPENAI_API_KEY) return setStatus('AI önerileri için VITE_OPENAI_API_KEY tanımla.');
     if (!selectedThread || !threadMessages.length) return;
-
     const lastMemberMessage = [...threadMessages].reverse().find((m) => m.sender_role === 'member')?.content;
     if (!lastMemberMessage) return;
 
-    setLoadingSuggestions(true);
-    setStatus('');
-
+    setLoadingSuggestions(true); setStatus('');
     const prompt = `Kullanıcı mesajı: "${lastMemberMessage}". Flört uygulaması için 3 kısa ve doğal Türkçe cevap öner.`;
-
     const res = await fetch('https://api.openai.com/v1/responses', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${OPENAI_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: 'gpt-4.1-mini',
-        input: prompt,
-      }),
+      method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${OPENAI_API_KEY}` }, body: JSON.stringify({ model: 'gpt-4.1-mini', input: prompt }),
     });
-
     setLoadingSuggestions(false);
-    if (!res.ok) {
-      const txt = await res.text();
-      return setStatus(`AI önerisi alınamadı: ${txt}`);
-    }
+    if (!res.ok) return setStatus(`AI önerisi alınamadı: ${await res.text()}`);
 
     const data = await res.json();
-    const outText = data.output_text || '';
-    const lines = outText
-      .split('\n')
-      .map((l) => l.replace(/^\d+[\).\-]\s*/, '').trim())
-      .filter(Boolean)
-      .slice(0, 3);
-    setAiSuggestions(lines);
+    setAiSuggestions((data.output_text || '').split('\n').map((l) => l.replace(/^\d+[\).\-]\s*/, '').trim()).filter(Boolean).slice(0, 3));
   }
 
+  // --- MODERNIZED UI RENDERING ---
   return (
-    <div className={`layout ${isAdmin ? 'layout-admin' : ''}`}>
-      <header className={`topbar ${isAdmin ? 'topbar-admin' : ''}`}>
-        <h1 className="brand"><span className="brand-icon">✦</span> Flort.</h1>
-        <div className="topbar-actions">
-          {isAdmin && loggedIn && (
-            <div className="admin-nav-pills">
-              <button type="button" className={`nav-pill ${adminTab === 'chat' ? 'active' : ''}`} onClick={() => setAdminTab('chat')}>Chat</button>
-              <button type="button" className={`nav-pill ${adminTab === 'stats' ? 'active' : ''}`} onClick={() => setAdminTab('stats')}>Stats</button>
-              <button type="button" className={`nav-pill ${adminTab === 'settings' ? 'active' : ''}`} onClick={() => setAdminTab('settings')}>Settings</button>
-              <button type="button" className={`nav-pill ${adminTab === 'payments' ? 'active' : ''}`} onClick={() => setAdminTab('payments')}>Payments</button>
+    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans selection:bg-fuchsia-500/30">
+      
+      {/* 🚀 GLOBAL HEADER */}
+      <header className={`sticky top-0 z-40 border-b backdrop-blur-xl transition-all ${isAdmin ? 'bg-slate-900/95 border-slate-800' : 'bg-white/80 border-slate-200'} px-6 py-4 shadow-sm`}>
+        <div className="max-w-[1440px] mx-auto flex items-center justify-between">
+          <h1 className="text-2xl font-black tracking-tight flex items-center gap-2">
+            <span className={`flex items-center justify-center w-8 h-8 rounded-lg shadow-inner ${isAdmin ? 'bg-gradient-to-br from-indigo-500 to-purple-600 text-white' : 'bg-gradient-to-br from-fuchsia-500 to-indigo-500 text-white'}`}>✦</span>
+            <span className={isAdmin ? 'text-white' : 'bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-600'}>Flort.</span>
+          </h1>
+
+          <div className="flex items-center gap-4">
+            {isAdmin && loggedIn && (
+              <nav className="hidden md:flex bg-slate-800/50 p-1 rounded-xl border border-slate-700/50">
+                {['chat', 'stats', 'settings', 'payments'].map((tab) => (
+                  <button key={tab} onClick={() => setAdminTab(tab)} className={`px-4 py-2 text-sm font-semibold rounded-lg capitalize transition-all ${adminTab === tab ? 'bg-indigo-500 text-white shadow-md' : 'text-slate-300 hover:text-white hover:bg-slate-700/50'}`}>
+                    {tab === 'chat' ? 'Sohbetler' : tab === 'stats' ? 'İstatistikler' : tab === 'settings' ? 'Ayarlar' : 'Ödemeler'}
+                  </button>
+                ))}
+              </nav>
+            )}
+
+            {loggedIn && !isAdmin && (
+              <nav className="hidden md:flex bg-white/50 p-1 rounded-2xl border border-slate-200/50 shadow-sm backdrop-blur-md">
+                {['discover', 'chat', 'profile', 'coins'].map((view) => (
+                  <button key={view} onClick={() => setUserView(view)} className={`relative px-5 py-2 text-sm font-bold rounded-xl capitalize transition-all duration-300 ${userView === view ? 'bg-slate-900 text-white shadow-lg shadow-slate-900/20' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'}`}>
+                    {view === 'discover' ? 'Keşfet' : view === 'chat' ? 'Mesajlar' : view === 'profile' ? 'Profil' : 'Cüzdan'}
+                    {view === 'chat' && totalUnreadCount > 0 && <span className="absolute top-2 right-3 w-2 h-2 bg-rose-500 rounded-full animate-pulse" />}
+                  </button>
+                ))}
+              </nav>
+            )}
+
+            <div className="flex items-center gap-3 border-l pl-4 border-slate-200/20">
+               {!loggedIn && (
+                <button onClick={() => setMode(mode === 'user' ? 'admin' : 'user')} className={`text-sm font-semibold underline underline-offset-4 transition-colors ${isAdmin ? 'text-slate-300 hover:text-white' : 'text-slate-500 hover:text-slate-900'}`}>
+                  {mode === 'user' ? 'Admin Girişi' : 'Kullanıcı Girişi'}
+                </button>
+              )}
+              {loggedIn && (
+                <button onClick={handleSignOut} className={`px-4 py-2 text-sm font-semibold rounded-xl transition-all ${isAdmin ? 'bg-slate-800 text-rose-400 hover:bg-slate-700' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}>Çıkış</button>
+              )}
             </div>
-          )}
-          {loggedIn && !isAdmin && (
-            <div className="member-top-actions flex items-center gap-2 rounded-2xl border border-fuchsia-300/40 bg-gradient-to-r from-[#160b2e] via-[#1f1648] to-[#10233f] p-2 shadow-2xl shadow-indigo-900/45 backdrop-blur-xl">
-              <button
-                type="button"
-                className={`rounded-xl px-5 py-2.5 text-sm font-extrabold tracking-[0.02em] transition-all ${userView === 'discover' ? 'bg-gradient-to-r from-fuchsia-500 via-violet-500 to-cyan-400 text-white shadow-lg shadow-fuchsia-500/35' : 'bg-white/10 text-indigo-50 ring-1 ring-white/25 hover:-translate-y-0.5 hover:bg-white/20'}`}
-                onClick={() => setUserView('discover')}
-              >
-                Keşfet
-              </button>
-              <button
-                type="button"
-                className={`rounded-xl px-5 py-2.5 text-sm font-extrabold tracking-[0.02em] transition-all ${userView === 'chat' ? 'bg-gradient-to-r from-fuchsia-500 via-violet-500 to-cyan-400 text-white shadow-lg shadow-fuchsia-500/35' : 'bg-white/10 text-indigo-50 ring-1 ring-white/25 hover:-translate-y-0.5 hover:bg-white/20'}`}
-                onClick={() => setUserView('chat')}
-              >
-                Mesajlar
-                {totalUnreadCount > 0 && <span className="nav-dot" />}
-              </button>
-              <button
-                type="button"
-                className={`rounded-xl px-5 py-2.5 text-sm font-extrabold tracking-[0.02em] transition-all ${userView === 'profile' ? 'bg-gradient-to-r from-fuchsia-500 via-violet-500 to-cyan-400 text-white shadow-lg shadow-fuchsia-500/35' : 'bg-white/10 text-indigo-50 ring-1 ring-white/25 hover:-translate-y-0.5 hover:bg-white/20'}`}
-                onClick={() => setUserView('profile')}
-              >
-                Profilim
-              </button>
-              <button
-                type="button"
-                className={`rounded-xl px-5 py-2.5 text-sm font-extrabold tracking-[0.02em] transition-all ${userView === 'coins' ? 'bg-gradient-to-r from-amber-400 via-orange-500 to-pink-500 text-white shadow-lg shadow-orange-400/35' : 'bg-white/10 text-indigo-50 ring-1 ring-white/25 hover:-translate-y-0.5 hover:bg-white/20'}`}
-                onClick={() => setUserView('coins')}
-              >
-                Coin Satın Al
-              </button>
-              <button
-                type="button"
-                className="rounded-xl border border-rose-200/50 bg-gradient-to-r from-rose-500 via-pink-500 to-orange-400 px-5 py-2.5 text-sm font-extrabold tracking-[0.02em] text-white shadow-lg shadow-rose-500/35 transition hover:-translate-y-0.5 hover:brightness-110"
-                onClick={handleSignOut}
-              >
-                Çıkış
-              </button>
-            </div>
-          )}
-          {!loggedIn && (
-            <button className="linkish" onClick={() => setMode(mode === 'user' ? 'admin' : 'user')}>
-              {mode === 'user' ? 'Admin girişi' : 'Kullanıcı girişi'}
-            </button>
-          )}
-          {loggedIn && isAdmin && <button onClick={handleSignOut}>Çıkış</button>}
+          </div>
         </div>
       </header>
+
+      {/* 🚀 ONBOARDING BANNER */}
       {loggedIn && !isAdmin && !onboardingState.completed && (
-        <section className="mb-3 rounded-2xl border border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50 px-4 py-3">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <strong className="text-amber-900">Hoş geldin! Mini onboarding ({onboardingState.currentStep}/3)</strong>
-              <p className="text-sm text-amber-800">
-                1) Fotoğraf ekle • 2) Hobi gir • 3) İlk 3 profile aksiyon yap ({Math.min(onboardingActionCount, 3)}/3)
-              </p>
+        <div className="bg-amber-100 border-b border-amber-200 px-6 py-3">
+          <div className="max-w-[1440px] mx-auto flex flex-wrap items-center justify-between gap-4">
+             <div>
+              <p className="font-bold text-amber-900">Hoş geldin! Profilini tamamla ({onboardingState.currentStep}/3)</p>
+              <p className="text-sm text-amber-800">Fotoğraf ekle, hobilerini gir ve eşleşmelere başla.</p>
             </div>
-            <button
-              type="button"
-              className="w-auto rounded-xl bg-amber-500 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-600"
-              onClick={() => {
-                if (!onboardingState.hasPhoto || !onboardingState.hasHobbies) {
-                  setUserView('profile');
-                } else {
-                  setUserView('discover');
-                }
-              }}
-            >
-              {(!onboardingState.hasPhoto || !onboardingState.hasHobbies) ? 'Profil adımına git' : 'Aksiyon adımına git'}
+            <button onClick={() => setUserView((!onboardingState.hasPhoto || !onboardingState.hasHobbies) ? 'profile' : 'discover')} className="bg-amber-600 hover:bg-amber-700 text-white text-sm font-bold px-4 py-2 rounded-lg shadow-sm">
+              Adımı Tamamla
             </button>
           </div>
-        </section>
+        </div>
       )}
 
-      {!loggedIn ? (
-        <section className="relative isolate min-h-[78vh] overflow-hidden rounded-[2rem] border border-slate-200/40 bg-slate-950 px-4 py-6 md:px-8 md:py-8">
-          <div className="pointer-events-none absolute -left-16 top-1/4 h-56 w-56 rounded-full bg-fuchsia-500/35 blur-3xl" />
-          <div className="pointer-events-none absolute right-0 top-0 h-64 w-64 rounded-full bg-indigo-400/35 blur-3xl" />
-          <div className="pointer-events-none absolute bottom-0 right-1/4 h-56 w-56 rounded-full bg-cyan-400/25 blur-3xl" />
+      {/* 🚀 GLOBAL STATUS BANNER */}
+      {status && (
+        <div className="fixed bottom-6 right-6 z-50 animate-fade-in max-w-sm w-full bg-slate-900 text-white px-5 py-4 rounded-2xl shadow-2xl border border-slate-700 flex items-start gap-3">
+          <span className="text-xl">🔔</span>
+          <p className="text-sm font-medium leading-tight pt-0.5">{status}</p>
+          <button onClick={() => setStatus('')} className="ml-auto text-slate-400 hover:text-white">✕</button>
+        </div>
+      )}
 
-          <div className="relative mx-auto grid max-w-6xl gap-6 lg:grid-cols-[430px_1fr]">
-            <div className="rounded-[2rem] border border-slate-200/80 bg-white/95 p-6 shadow-2xl shadow-slate-950/25 backdrop-blur-2xl md:p-7">
-              <div className="mb-6 space-y-4">
-                <div className="inline-flex items-center gap-2 rounded-full border border-indigo-200 bg-indigo-50 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.2em] text-indigo-700">
-                  <span className="h-2 w-2 rounded-full bg-emerald-300" />
-                  Flort Quantum UI
-                </div>
-                <div>
-                  <p className="text-sm text-slate-500">Yeni nesil sosyal keşif deneyimi</p>
-                  <h2 className="mt-1 text-3xl font-semibold leading-tight text-slate-900">
-                    {mode === 'admin' ? 'Yönetici girişi' : 'Kullanıcı giriş merkezi'}
+      {/* 🚀 MAIN CONTENT AREA */}
+      <main className="flex-1 flex flex-col max-w-[1440px] w-full mx-auto p-4 md:p-6">
+        
+        {/* ======================= AUTH SCREEN ======================= */}
+        {!loggedIn ? (
+          <div className="flex-1 flex items-center justify-center py-10">
+            <div className="w-full max-w-[1000px] grid md:grid-cols-2 gap-8 bg-white rounded-[2rem] shadow-2xl overflow-hidden border border-slate-200">
+              
+              {/* Left Side: Form */}
+              <div className="p-8 md:p-12 flex flex-col justify-center">
+                <div className="mb-8">
+                  <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold mb-4 ${mode === 'admin' ? 'bg-indigo-100 text-indigo-700' : 'bg-fuchsia-100 text-fuchsia-700'}`}>
+                    {mode === 'admin' ? 'YÖNETİCİ SİSTEMİ' : 'FLORT PLATFORMU'}
+                  </span>
+                  <h2 className="text-3xl font-black text-slate-900 tracking-tight">
+                    {mode === 'admin' ? 'Kontrol Paneli' : 'Eşleşmeye Başla'}
                   </h2>
+                  <p className="text-slate-500 mt-2 font-medium">Lütfen devam etmek için giriş yapın.</p>
                 </div>
-              </div>
 
-              <div className="space-y-3.5">
-                <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 transition-all focus-within:border-fuchsia-400 focus-within:shadow-lg focus-within:shadow-fuchsia-500/15">
-                  <span className="text-lg text-slate-500">👤</span>
+                <div className="space-y-4">
                   <input
-  type="text"
-  placeholder={mode === 'admin' ? 'Admin modunda kullanıcı adı kapalı' : 'Kullanıcı adı'}
-  disabled={mode === 'admin'}
-  value={mode === 'admin' ? '' : authForm.username}
-  onChange={(e) => setAuthForm((st) => ({ ...st, username: e.target.value }))}
-  className="flex-1 bg-transparent py-2 text-sm text-slate-900 placeholder:text-slate-400 outline-none disabled:cursor-not-allowed disabled:text-slate-400"
-/>
-                </div>
-
-                <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 transition-all focus-within:border-cyan-400 focus-within:shadow-lg focus-within:shadow-cyan-500/15">
-                  <span className="text-lg text-slate-500">🔐</span>
+                    type="text"
+                    placeholder={mode === 'admin' ? 'Kullanıcı Adı Kapalı' : 'Kullanıcı Adı'}
+                    disabled={mode === 'admin'}
+                    value={mode === 'admin' ? '' : authForm.username}
+                    onChange={(e) => setAuthForm((st) => ({ ...st, username: e.target.value }))}
+                    className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-medium focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all disabled:opacity-50"
+                  />
                   <input
                     type="password"
-                    placeholder="Şifre"
+                    placeholder="Şifreniz"
                     value={authForm.password}
                     onChange={(e) => setAuthForm((st) => ({ ...st, password: e.target.value }))}
-                    className="flex-1 bg-transparent py-2 text-sm text-slate-900 placeholder:text-slate-400 outline-none"
+                    className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-medium focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all"
                   />
                 </div>
-              </div>
 
-              <div className="mt-6 space-y-3">
-                <button
-                  disabled={loading}
-                  onClick={handleSignIn}
-                  className="w-full rounded-2xl bg-gradient-to-r from-fuchsia-500 via-indigo-500 to-cyan-400 px-5 py-4 text-sm font-semibold text-white shadow-lg shadow-indigo-700/35 transition-all hover:scale-[1.01] hover:shadow-xl hover:shadow-fuchsia-500/35 active:scale-[0.99] disabled:opacity-60"
-                >
-                  {loading ? 'İşleniyor...' : 'Giriş Yap'}
-                </button>
-                {mode !== 'admin' && (
-                  <button
-                    disabled={loading}
-                    onClick={handleSignUp}
-                    className="w-full rounded-2xl border border-slate-200 bg-slate-100 px-5 py-4 text-sm font-semibold text-slate-900 transition-all hover:bg-slate-200 active:scale-[0.99] disabled:opacity-60"
-                  >
-                    Hesap Oluştur
+                <div className="mt-8 space-y-3">
+                  <button onClick={handleSignIn} disabled={loading} className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-4 rounded-2xl shadow-lg shadow-slate-900/20 transition-transform active:scale-[0.98]">
+                    {loading ? 'İşleniyor...' : 'Giriş Yap'}
                   </button>
-                )}
-              </div>
-
-              <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
-                {mode === 'admin'
-                  ? 'Admin girişi için tanımlı yönetici şifresini kullan.'
-                  : 'Hızlıca hesap oluştur, eşleşmeleri keşfet ve gerçek zamanlı sohbete başla.'}
-              </div>
-            </div>
-
-            <div className="rounded-[2rem] border border-white/20 bg-gradient-to-br from-slate-900/80 via-indigo-950/75 to-slate-900/85 p-5 shadow-2xl shadow-slate-950/40 md:p-7">
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="group relative overflow-hidden rounded-[2rem] border border-white/20 bg-white/10 backdrop-blur-sm">
-                  <img
-                    src="https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=1000&q=80"
-                    className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110"
-                    alt="Flort profil kartı"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-900/30 to-transparent" />
-                  <div className="absolute bottom-0 left-0 right-0 p-5 text-white">
-                    <h3 className="text-2xl font-semibold">Sena, 24</h3>
-                    <p className="text-sm text-white/80">İstanbul · Fotoğraf · Dans · Kahve</p>
-                  </div>
-                </div>
-
-                <div className="flex flex-col gap-3">
-                  <div className="rounded-2xl border border-white/15 bg-white/10 p-4 backdrop-blur-sm">
-                    <p className="text-xs uppercase tracking-[0.18em] text-cyan-100/80">Canlı Etkileşim</p>
-                    <div className="mt-3 space-y-2">
-                      <div className="max-w-[80%] rounded-2xl rounded-tl-sm bg-white px-4 py-3 text-sm text-slate-800 shadow-sm">Selam! Akşam kahve planı var mı? ☕</div>
-                      <div className="ml-auto max-w-[80%] rounded-2xl rounded-tr-sm bg-gradient-to-r from-fuchsia-500 to-indigo-500 px-4 py-3 text-sm text-white shadow-lg shadow-indigo-700/30">Olur! 20:30 Nişantaşı nasıl? ✨</div>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-2 text-center">
-                    <div className="rounded-xl border border-white/15 bg-white/10 px-3 py-2">
-                      <p className="text-lg font-bold text-white">98%</p>
-                      <p className="text-[11px] text-slate-300">Uyum</p>
-                    </div>
-                    <div className="rounded-xl border border-white/15 bg-white/10 px-3 py-2">
-                      <p className="text-lg font-bold text-white">2.1s</p>
-                      <p className="text-[11px] text-slate-300">Yanıt</p>
-                    </div>
-                    <div className="rounded-xl border border-white/15 bg-white/10 px-3 py-2">
-                      <p className="text-lg font-bold text-white">24/7</p>
-                      <p className="text-[11px] text-slate-300">Aktif</p>
-                    </div>
-                  </div>
-
-                  <div className="mt-auto flex items-center gap-2 rounded-full border border-white/20 bg-white/10 p-1.5">
-                    <input
-                      type="text"
-                      placeholder="Bir mesaj yaz..."
-                      className="flex-1 bg-transparent px-4 py-2 text-sm text-white placeholder:text-slate-300/70 outline-none"
-                      readOnly
-                    />
-                    <button type="button" className="rounded-full bg-gradient-to-r from-cyan-400 to-indigo-500 px-4 py-2 text-xs font-semibold text-white">
-                      Gönder
+                  {mode !== 'admin' && (
+                    <button onClick={handleSignUp} disabled={loading} className="w-full bg-white hover:bg-slate-50 text-slate-900 border border-slate-200 font-bold py-4 rounded-2xl transition-transform active:scale-[0.98]">
+                      Yeni Hesap Oluştur
                     </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-      ) : isAdmin ? (
-        <main className="admin-modern compact-shell admin-ops">
-          <aside className="admin-left card">
-            {selectedThread && (
-              <div className="meta selected-profile-meta left-profile-meta">
-                <h4>Aktif Konuşan Kullanıcı</h4>
-                {selectedMemberProfile?.photo_url && <img src={selectedMemberProfile.photo_url} alt={selectedThread.member_username} className="profile-photo" />}
-                <p><strong>Kullanıcı:</strong> {memberSession?.username || 'Üye'}</p>
-                <p><strong>Yaş:</strong> {selectedMemberProfile?.age || '-'}</p>
-                <p><strong>Şehir:</strong> {selectedMemberProfile?.city || '-'}</p>
-                <p><strong>Hobiler:</strong> {selectedMemberProfile?.hobbies || '-'}</p>
-                <p><strong>Durum:</strong> {selectedMemberProfile?.status_emoji || '🙂'}</p>
-                <p><strong>Kara Liste:</strong> {memberModeration.blacklisted ? 'Evet' : 'Hayır'}</p>
-              </div>
-            )}
-
-            <div className="panel-title-row panel-head">
-              <h3>Mesaj Bekleyen Thread'ler</h3>
-            </div>
-            <div className="thread-queue modern-thread-queue" ref={threadQueueRef}>
-              {sortedIncomingThreads.map((thread) => {
-                const threadProfile = profileById[thread.virtual_profile_id];
-                const waitingReply = thread.last_sender_role === 'member';
-                return (
-                  <button
-                    key={`${thread.member_id}-${thread.virtual_profile_id}`}
-                    onClick={() => setSelectedThread(thread)}
-                    className={`thread-item modern ${selectedThread?.member_id === thread.member_id && selectedThread?.virtual_profile_id === thread.virtual_profile_id ? 'active' : ''}`}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={!!selectedThreadKeys[threadKey(thread.member_id, thread.virtual_profile_id)]}
-                      onClick={(e) => e.stopPropagation()}
-                      onChange={(e) =>
-                        setSelectedThreadKeys((prev) => ({
-                          ...prev,
-                          [threadKey(thread.member_id, thread.virtual_profile_id)]: e.target.checked,
-                        }))
-                      }
-                    />
-                    <span className="thread-avatar-wrap">
-                      {threadProfile?.photo_url ? (
-                        <img src={threadProfile.photo_url} alt={thread.virtual_name} className="thread-avatar" />
-                      ) : (
-                        <span className="thread-avatar-fallback">{thread.virtual_name?.slice(0, 1)}</span>
-                      )}
-                    </span>
-                    <span className="thread-copy">
-                      <strong>{thread.member_username} → {thread.virtual_name}</strong>
-                      {thread.last_message_content && <small>{thread.last_message_content}</small>}
-                      {waitingReply && <small className="pending-badge">Cevap bekliyor</small>}
-                      {adminTypingByThread[threadKey(thread.member_id, thread.virtual_profile_id)] && <small>• yazıyor...</small>}
-                    </span>
-                    {adminUnreadByThread[threadKey(thread.member_id, thread.virtual_profile_id)] > 0 && (
-                      <span className="unread-pill">{adminUnreadByThread[threadKey(thread.member_id, thread.virtual_profile_id)]}</span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-
-            <div className="meta">
-              <h4>SLA Paneli</h4>
-              <p><strong>Cevaplanmamış thread:</strong> {slaStats.waitingCount}</p>
-              <p><strong>Ort. bekleme süresi:</strong> {slaStats.avgWaitMin > 0 && slaStats.avgWaitMin < 1 ? '<1 dk' : `${slaStats.avgWaitMin.toFixed(1)} dk`}</p>
-            </div>
-
-            <div className="meta">
-              <h4>Engagement (7 Gün)</h4>
-              <p><strong>Yoğun saatler:</strong></p>
-              <ul className="insight-list">
-                {engagementInsights.topHours.map((h) => (
-                  <li key={h.label}>{h.label} → {h.count} mesaj</li>
-                ))}
-              </ul>
-              <p><strong>İlgi gören profiller:</strong></p>
-              <ul className="insight-list">
-                {engagementInsights.topProfiles.map((p) => (
-                  <li key={p.name}>{p.name} → {p.count} etkileşim</li>
-                ))}
-              </ul>
-            </div>
-
-            <div className="meta">
-              <h4>Bulk Aksiyon</h4>
-              <select value={bulkTemplate} onChange={(e) => setBulkTemplate(e.target.value)}>
-                {BULK_TEMPLATES.map((tpl) => (
-                  <option key={tpl} value={tpl}>{tpl}</option>
-                ))}
-              </select>
-              <button onClick={sendBulkTemplate}>Seçili thread’lere template gönder</button>
-            </div>
-          </aside>
-
-          <section className="admin-center card">
-            {adminTab === 'chat' && (
-              <>
-                <div className="chat-header admin-center-head">
-                  <div>
-                    <h3>{selectedThread?.virtual_name || 'Sohbet seç'}</h3>
-                    <small>{selectedThreadProfile && onlineProfiles[selectedThreadProfile.id] ? 'Online' : 'Offline'}</small>
-                  </div>
-                  <select value={selectedThread?.status_tag || 'takip_edilecek'} onChange={(e) => updateSelectedThreadTag(e.target.value)} style={{ width: 'auto' }}>
-                    {THREAD_TAGS.map((tag) => <option key={tag} value={tag}>{tag}</option>)}
-                  </select>
-                  <button type="button" className="drawer-toggle" onClick={() => setAdminDrawerOpen((v) => !v)}>
-                    {adminDrawerOpen ? 'Paneli Gizle' : 'Paneli Aç'}
-                  </button>
-                </div>
-
-                <div className="chat-box admin-chat-box" ref={adminChatBoxRef}>
-                  {threadMessages.map((msg) => {
-                    const audioUrl = getAudioUrl(msg.content);
-                    return (
-                      <div key={msg.id} className={`msg ${msg.sender_role}`}>
-                        <span>{msg.sender_role === 'member' ? selectedThread?.member_username : selectedThread?.virtual_name}</span>
-                        {audioUrl ? <audio controls src={audioUrl} className="audio-player" /> : <p>{msg.content}</p>}
-                        <small>
-                          {formatTime(msg.created_at)}
-                          {msg.sender_role === 'virtual' ? <span className={`ticks ${msg.seen_by_member ? 'seen' : ''}`} title={msg.seen_by_member_at ? `Görüldü: ${formatTime(msg.seen_by_member_at)}` : `Teslim: ${formatTime(msg.created_at)}`}>✓✓</span> : ''}
-                        </small>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                <div className="quick-replies">
-                  {QUICK_REPLIES.map((reply) => (
-                    <button key={reply} type="button" className="chip" onClick={() => setAdminReply((prev) => `${prev ? `${prev}\n` : ''}${reply}`)}>{reply}</button>
-                  ))}
-                  <button type="button" className="chip ai" onClick={fetchAiSuggestions} disabled={loadingSuggestions}>{loadingSuggestions ? 'AI düşünüyor...' : 'AI Önerisi Getir'}</button>
-                </div>
-
-                {!!aiSuggestions.length && (
-                  <div className="ai-suggestions">
-                    {aiSuggestions.map((suggestion) => (
-                      <button key={suggestion} type="button" className="chip" onClick={() => setAdminReply(suggestion)}>{suggestion}</button>
-                    ))}
-                  </div>
-                )}
-
-                <textarea
-                  className="grow-textarea"
-                  placeholder="Sanal profil cevabı"
-                  value={adminReply}
-                  onChange={(e) => {
-                    setAdminReply(e.target.value);
-                    autoResizeTextarea(e.target, 260);
-                  }}
-                  onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendAdminReply(); } }}
-                />
-                <button onClick={sendAdminReply}>Yanıt Gönder</button>
-              </>
-            )}
-
-            {adminTab === 'stats' && (
-              <div className="stats-dashboard">
-                <h3>Stats Dashboard ({statsRange === 'daily' ? 'Günlük' : statsRange === 'weekly' ? 'Haftalık' : 'Aylık'})</h3>
-                <div className="stats-range-switch">
-                  <button type="button" className={statsRange === 'daily' ? 'active' : ''} onClick={() => setStatsRange('daily')}>Günlük</button>
-                  <button type="button" className={statsRange === 'weekly' ? 'active' : ''} onClick={() => setStatsRange('weekly')}>Haftalık</button>
-                  <button type="button" className={statsRange === 'monthly' ? 'active' : ''} onClick={() => setStatsRange('monthly')}>Aylık</button>
-                </div>
-                <div className="stats-grid">
-                  <div className="meta stat-card"><small>Toplam Mesaj</small><strong>{adminStats.totalMessagesToday}</strong></div>
-                  <div className="meta stat-card"><small>Üye Mesajı</small><strong>{adminStats.memberMessagesToday}</strong></div>
-                  <div className="meta stat-card"><small>Admin Cevabı</small><strong>{adminStats.adminRepliesToday}</strong></div>
-                  <div className="meta stat-card"><small>Cevaplanan Thread</small><strong>{adminStats.respondedThreadsToday}</strong></div>
-                  <div className="meta stat-card"><small>Yeni Üye Kaydı</small><strong>{adminStats.newMembersToday}</strong></div>
-                  <div className="meta stat-card"><small>Aktif Thread</small><strong>{adminStats.activeThreadsToday}</strong></div>
-                  <div className="meta stat-card"><small>Ort. Cevap Süresi</small><strong>{adminStats.avgResponseMinToday.toFixed(1)} dk</strong></div>
-                </div>
-
-                <div className="stats-lists">
-                  <div className="meta">
-                    <p><strong>Yoğun Saatler</strong></p>
-                    <ul className="insight-list">
-                      {engagementInsights.topHours.map((h) => <li key={h.label}>{h.label} → {h.count}</li>)}
-                    </ul>
-                  </div>
-                  <div className="meta">
-                    <p><strong>En Çok İlgi Gören Profiller</strong></p>
-                    <ul className="insight-list">
-                      {engagementInsights.topProfiles.map((p) => <li key={p.name}>{p.name} → {p.count}</li>)}
-                    </ul>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {adminTab === 'settings' && (
-              <div className="settings-page">
-                <div className="meta">
-                  <h3>Settings</h3>
-                  <label className="toggle-row">
-                    <span>Bildirim sesi</span>
-                    <input
-                      type="checkbox"
-                      checked={notificationSoundEnabled}
-                      onChange={(e) => setNotificationSoundEnabled(e.target.checked)}
-                    />
-                  </label>
-                </div>
-
-                <div className="meta">
-                  <div className="panel-title-row panel-divider">
-                    <h3>Sanal Profil Oluştur</h3>
-                    <button type="button" className="icon-dice" onClick={fillRandomVirtualProfile} aria-label="Rastgele üret">🎲</button>
-                  </div>
-
-                  <label className="floating-field">
-                    <input placeholder=" " value={profileForm.name} onChange={(e) => setProfileForm((s) => ({ ...s, name: e.target.value }))} />
-                    <span>Ad (boşsa otomatik)</span>
-                  </label>
-                  <label className="floating-field">
-                    <input placeholder=" " type="number" value={profileForm.age} onChange={(e) => setProfileForm((s) => ({ ...s, age: e.target.value }))} />
-                    <span>Yaş (boşsa otomatik)</span>
-                  </label>
-                  <label className="floating-field">
-                    <input placeholder=" " value={profileForm.city} onChange={(e) => setProfileForm((s) => ({ ...s, city: e.target.value }))} />
-                    <span>Şehir (boşsa otomatik)</span>
-                  </label>
-                  <label className="floating-field">
-                    <input placeholder=" " value={profileForm.gender} onChange={(e) => setProfileForm((s) => ({ ...s, gender: e.target.value }))} />
-                    <span>Cinsiyet</span>
-                  </label>
-                  <label className="floating-field">
-                    <textarea placeholder=" " value={profileForm.hobbies} onChange={(e) => setProfileForm((s) => ({ ...s, hobbies: e.target.value }))} />
-                    <span>Hobiler</span>
-                  </label>
-
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={async (e) => {
-                      const file = e.target.files?.[0];
-                      if (!file) return;
-                      const url = await uploadImage(file, 'virtual-profiles');
-                      if (url) setProfileForm((s) => ({ ...s, photo_url: url }));
-                    }}
-                  />
-                  {profileForm.photo_url && <img src={profileForm.photo_url} alt="Önizleme" className="upload-preview" />}
-
-                  <button onClick={createVirtualProfile}>Kaydet (Foto + Otomatik İsim/Şehir/Yaş)</button>
-                </div>
-
-                <div className="meta">
-                  <h3>Kayıt Olan Kullanıcılar</h3>
-                  {loadingMembers ? (
-                    <p>Yükleniyor...</p>
-                  ) : (
-                    <div className="member-list">
-                      {registeredMembers.map((member) => (
-                        <div key={member.id} className="member-row">
-                          <div>
-                            <strong>{member.username}</strong>
-                            <small>{new Date(member.created_at).toLocaleString('tr-TR')}</small>
-                            <small>Jeton: {member.coin_balance ?? 100}</small>
-                            <small>İletişim: {member.contact_phone || '-'}</small>
-                          </div>
-                          <button type="button" className="danger-btn" onClick={() => deleteMember(member.id)}>Sil</button>
-                        </div>
-                      ))}
-                      {!registeredMembers.length && <p>Kayıtlı kullanıcı yok.</p>}
-                    </div>
                   )}
                 </div>
               </div>
-            )}
 
-            {adminTab === 'payments' && (
-              <div className="settings-page">
-                <div className="meta">
-                  <h3>Ödeme API Entegrasyonu</h3>
-                  <p>Coin satın alma akışı Stripe Checkout Session endpointine otomatik gider. Adminin endpoint yazmasına gerek yok.</p>
-                  <input
-                    placeholder="Provider (örn: iyzico, stripe, paytr)"
-                    value={paymentSettings.provider}
-                    onChange={(e) => setPaymentSettings((prev) => ({ ...prev, provider: e.target.value }))}
-                  />
-                  <input
-                    readOnly
-                    value={DEFAULT_CHECKOUT_ENDPOINT}
-                  />
-                  <p className="text-xs text-slate-500">Webhook callback adresi: <code>/api/webhook</code> (Stripe Dashboard'dan tanımlanmalı)</p>
-                  <label className="toggle-row">
-                    <span>Entegrasyon aktif</span>
-                    <input
-                      type="checkbox"
-                      checked={paymentSettings.is_active}
-                      onChange={(e) => setPaymentSettings((prev) => ({ ...prev, is_active: e.target.checked }))}
-                    />
-                  </label>
-                  <button type="button" onClick={savePaymentSettings}>Ödeme API Ayarlarını Kaydet</button>
+              {/* Right Side: Graphic */}
+              <div className="hidden md:flex relative bg-slate-900 p-12 flex-col justify-end overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-br from-fuchsia-600/20 to-indigo-600/40 mix-blend-overlay" />
+                <img src="https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=1000&q=80" alt="Cover" className="absolute inset-0 w-full h-full object-cover opacity-40 mix-blend-luminosity" />
+                <div className="relative z-10 text-white">
+                  <h3 className="text-3xl font-black mb-2 leading-tight">Yapay Zeka ile<br/>Modern Flört Deneyimi</h3>
+                  <p className="text-slate-300 font-medium">Hemen katıl ve sana en uygun eşleşmeleri saniyeler içinde bul.</p>
                 </div>
               </div>
-            )}
-          </section>
+            </div>
+          </div>
+        ) 
+        
+        /* ======================= ADMIN SCREEN ======================= */
+        : isAdmin ? (
+          <div className="flex-1 flex flex-col lg:flex-row gap-6 h-[calc(100vh-100px)]">
+            
+            {/* Admin Left Sidebar */}
+            <aside className="w-full lg:w-80 flex flex-col gap-4 overflow-y-auto">
+               <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm">
+                 <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-3">Mesaj Bekleyenler</h3>
+                 <div className="flex flex-col gap-2">
+                   {sortedIncomingThreads.map((thread) => {
+                     const isWait = thread.last_sender_role === 'member';
+                     const isActive = selectedThread?.member_id === thread.member_id && selectedThread?.virtual_profile_id === thread.virtual_profile_id;
+                     return (
+                       <button key={threadKey(thread.member_id, thread.virtual_profile_id)} onClick={() => setSelectedThread(thread)} className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all text-left ${isActive ? 'bg-indigo-50 border-indigo-200 shadow-sm' : 'bg-slate-50 border-slate-100 hover:border-slate-300'}`}>
+                         <div className="relative flex-shrink-0">
+                           <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center font-bold text-indigo-700">
+                             {thread.virtual_name?.slice(0, 1)}
+                           </div>
+                           {isWait && <div className="absolute -top-1 -right-1 w-3 h-3 bg-rose-500 border-2 border-white rounded-full" />}
+                         </div>
+                         <div className="flex-1 min-w-0">
+                           <p className="text-sm font-bold text-slate-900 truncate">{thread.member_username} <span className="text-slate-400 font-normal">→ {thread.virtual_name}</span></p>
+                           <p className="text-xs text-slate-500 truncate mt-0.5">{isWait ? 'Yanıt bekliyor...' : 'Yanıtlandı'}</p>
+                         </div>
+                       </button>
+                     )
+                   })}
+                 </div>
+               </div>
 
-          {adminDrawerOpen && adminTab === 'chat' && (
-            <aside className="admin-right card drawer-panel">
-              {selectedThreadProfile && (
-                <div className="meta selected-profile-meta">
-                  <h4>Seçili Profil Bilgileri</h4>
-                  {selectedThreadProfile.photo_url && <img src={selectedThreadProfile.photo_url} alt={selectedThreadProfile.name} className="profile-photo" />}
-                  <p><strong>Ad:</strong> {selectedThreadProfile.name}</p>
-                  <p><strong>Yaş:</strong> {selectedThreadProfile.age}</p>
-                  <p><strong>Şehir:</strong> {selectedThreadProfile.city || '-'}</p>
-                  <p><strong>Hobiler:</strong> {selectedThreadProfile.hobbies || '-'}</p>
-                </div>
-              )}
-
-              <div className="meta">
-                <h4>Quick Facts</h4>
-                <textarea
-                  placeholder="Kullanıcı hakkında önemli notlar (şehir, iş, sınırlar, tercih vb.)"
-                  value={quickFactsText}
-                  onChange={(e) => setQuickFactsText(e.target.value)}
-                />
-                <button onClick={saveQuickFacts}>Quick Facts Kaydet</button>
-              </div>
-              <div className="meta">
-                <h4>Moderasyon Araçları</h4>
-                <textarea
-                  placeholder="Kullanıcı notu"
-                  value={memberModeration.note}
-                  onChange={(e) => setMemberModeration((prev) => ({ ...prev, note: e.target.value }))}
-                />
-                <input
-                  placeholder="Etiketler (virgülle): riskli, VIP, takip"
-                  value={memberModeration.tags}
-                  onChange={(e) => setMemberModeration((prev) => ({ ...prev, tags: e.target.value }))}
-                />
-                <label className="toggle-row">
-                  <span>Kara listeye al</span>
-                  <input
-                    type="checkbox"
-                    checked={memberModeration.blacklisted}
-                    onChange={(e) => setMemberModeration((prev) => ({ ...prev, blacklisted: e.target.checked }))}
-                  />
-                </label>
-                <button onClick={saveMemberModeration}>Moderasyon Kaydet</button>
-              </div>
-
+               <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm">
+                  <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-3">SLA & Durum</h3>
+                  <div className="space-y-2 text-sm text-slate-700">
+                    <div className="flex justify-between"><span>Bekleyen Mesaj:</span> <strong className="text-rose-600">{slaStats.waitingCount}</strong></div>
+                    <div className="flex justify-between"><span>Ort. Bekleme:</span> <strong>{slaStats.avgWaitMin > 0 && slaStats.avgWaitMin < 1 ? '<1 dk' : `${slaStats.avgWaitMin.toFixed(1)} dk`}</strong></div>
+                  </div>
+               </div>
             </aside>
-          )}
-        </main>
-      ) : userView === 'discover' ? (
-        <main className="relative isolate space-y-6 overflow-hidden rounded-[2.2rem] border border-slate-200/70 bg-slate-950 p-4 text-white shadow-[0_30px_100px_-40px_rgba(15,23,42,0.85)] md:p-6">
-          <div className="pointer-events-none absolute -left-24 top-0 h-64 w-64 rounded-full bg-fuchsia-500/25 blur-3xl" />
-          <div className="pointer-events-none absolute right-10 top-10 h-56 w-56 rounded-full bg-cyan-400/20 blur-3xl" />
-          <div className="pointer-events-none absolute bottom-0 right-1/3 h-52 w-52 rounded-full bg-indigo-500/20 blur-3xl" />
 
-          <section className="relative overflow-hidden rounded-[1.8rem] border border-slate-200/80 bg-white/95 p-5 text-slate-900 shadow-2xl shadow-slate-900/10 md:p-6">
-            <div className="pointer-events-none absolute -right-16 -top-20 h-56 w-56 rounded-full bg-indigo-200/70 blur-3xl" />
-            <div className="pointer-events-none absolute -left-10 bottom-0 h-48 w-48 rounded-full bg-cyan-200/60 blur-3xl" />
-            <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
-              <div className="relative space-y-3">
-                <span className="inline-flex w-fit items-center gap-2 rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-indigo-700">
-                  <span className="h-2 w-2 rounded-full bg-emerald-300" />
-                  Discover Hub
-                </span>
-                <h2 className="text-3xl font-semibold leading-tight md:text-4xl">Çağa uyumlu eşleşmeler seni bekliyor ✨</h2>
-                <p className="max-w-2xl text-sm text-slate-600 md:text-base">
-                  Gelişmiş filtreler ve etkileşim butonlarıyla profilleri hızlıca keşfet, beğen ve tek dokunuşla sohbete başla.
-                </p>
-                <div className="flex flex-wrap items-center gap-2 text-xs">
-                  <span className="rounded-full border border-slate-200 bg-slate-100 px-3 py-1.5 text-slate-700">Toplam profil: {discoverProfiles.length}</span>
-                  <span className="rounded-full border border-emerald-300/70 bg-emerald-50 px-3 py-1.5 text-emerald-700">
-                    Çevrimiçi: {discoverProfiles.filter((p) => effectiveOnlineProfiles[p.id]).length}
-                  </span>
-                  <span className="rounded-full border border-indigo-300/70 bg-indigo-50 px-3 py-1.5 text-indigo-700">Spotlight: {spotlightProfiles.length}</span>
-                  <span className="rounded-full border border-amber-300/70 bg-amber-50 px-3 py-1.5 text-amber-700">Jeton: {memberProfile.coin_balance ?? 0}</span>
-                </div>
-                <div className="mt-3 flex items-center justify-between rounded-2xl border border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50 px-4 py-3">
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">Jeton Cüzdanı</p>
-                    <p className="text-2xl font-extrabold text-amber-900">{memberProfile.coin_balance ?? 0} Jeton</p>
-                  </div>
-                  <button type="button" className="w-auto rounded-xl bg-amber-500 px-4 py-2 text-sm font-bold text-white hover:bg-amber-600" onClick={() => setUserView('coins')}>
-                    Yükleme Yap
-                  </button>
-                </div>
-              </div>
-
-              <div className="relative grid gap-2 sm:grid-cols-2 xl:w-[480px]">
-                <label className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 shadow-sm">
-                  <span className="text-sm text-slate-400">⌕</span>
-                  <input
-                    placeholder="İsim, şehir veya hobi ara"
-                    value={profileSearch}
-                    onChange={(e) => setProfileSearch(e.target.value)}
-                    className="w-full bg-transparent text-sm text-slate-800 placeholder:text-slate-400 outline-none"
-                  />
-                </label>
-                <select
-                  value={genderFilter}
-                  onChange={(e) => setGenderFilter(e.target.value)}
-                  className="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 outline-none shadow-sm focus:border-cyan-400"
-                >
-                  <option value="all" className="text-slate-900">Tümü</option>
-                  <option value="Kadın" className="text-slate-900">Kadın</option>
-                  <option value="Erkek" className="text-slate-900">Erkek</option>
-                </select>
-                <input
-                  placeholder="Şehir filtresi (örn. İstanbul)"
-                  value={cityFilter}
-                  onChange={(e) => setCityFilter(e.target.value)}
-                  className="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 outline-none shadow-sm focus:border-fuchsia-400"
-                />
-                <select
-                  value={discoverSort}
-                  onChange={(e) => setDiscoverSort(e.target.value)}
-                  className="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 outline-none shadow-sm focus:border-indigo-400"
-                >
-                  <option value="match" className="text-slate-900">Uyuma göre sırala</option>
-                  <option value="newest" className="text-slate-900">En yeni profiller</option>
-                  <option value="age_asc" className="text-slate-900">Yaşa göre (artan)</option>
-                  <option value="online" className="text-slate-900">Önce çevrimiçi</option>
-                </select>
-              </div>
-            </div>
-          </section>
-
-          <section className="relative grid gap-4 sm:grid-cols-2 2xl:grid-cols-3">
-            {discoverProfiles.map((profile) => {
-              const hobbyBadges = (profile.hobbies || '')
-                .split(',')
-                .map((h) => h.trim())
-                .filter(Boolean)
-                .slice(0, 3);
-              const isOnline = !!effectiveOnlineProfiles[profile.id];
-              const liked = !!likedProfiles[profile.id];
-              const hearted = !!heartedProfiles[profile.id];
-              const waved = !!wavedProfiles[profile.id];
-
-              return (
-                <article
-                  key={profile.id}
-                  className="group relative overflow-hidden rounded-[1.6rem] border border-white/15 bg-white/[0.06] p-3 backdrop-blur-md transition-all duration-300 hover:-translate-y-1.5 hover:border-white/35 hover:bg-white/[0.11] hover:shadow-2xl hover:shadow-indigo-900/40"
-                >
-                  <div className="relative h-[330px] overflow-hidden rounded-[1.2rem]">
-                    {profile.photo_url ? (
-                      <img src={profile.photo_url} alt={profile.name} className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110" />
-                    ) : (
-                      <div className="flex h-full items-center justify-center bg-gradient-to-br from-slate-700 via-slate-800 to-slate-900 text-6xl font-semibold text-white/70">
-                        {profile.name?.slice(0, 1)}
-                      </div>
-                    )}
-                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-900/35 to-transparent" />
-                    <div className="absolute left-3 top-3 rounded-full border border-white/30 bg-black/25 px-3 py-1 text-xs font-medium text-white backdrop-blur-sm">
-                      {isOnline ? '🟢 Çevrimiçi' : '⚪ Offline'}
-                    </div>
-                    <div className="absolute bottom-0 left-0 right-0 space-y-2 p-4">
+            {/* Admin Center - Chat Tab */}
+            <main className="flex-1 bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col overflow-hidden">
+               {adminTab === 'chat' && (
+                 <>
+                    <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
                       <div>
-                        <h3 className="text-2xl font-semibold text-white">{profile.name}, {profile.age}</h3>
-                        <p className="text-sm text-slate-200">{profile.city || 'Türkiye'}</p>
+                        <h2 className="text-lg font-bold text-slate-900">{selectedThread?.virtual_name || 'Lütfen bir sohbet seçin'}</h2>
+                        <p className="text-xs font-semibold text-emerald-600">Sanal Profil Modülü</p>
                       </div>
-                      <div className="flex flex-wrap gap-1.5">
-                        {hobbyBadges.length
-                          ? hobbyBadges.map((hobby) => (
-                            <span key={hobby} className="rounded-full border border-white/25 bg-white/15 px-2.5 py-1 text-[11px] text-slate-100">
-                              {hobby}
+                      <select value={selectedThread?.status_tag || 'takip_edilecek'} onChange={(e) => updateSelectedThreadTag(e.target.value)} className="bg-white border border-slate-200 text-sm font-medium py-1.5 px-3 rounded-lg outline-none">
+                        {THREAD_TAGS.map((tag) => <option key={tag} value={tag}>{tag}</option>)}
+                      </select>
+                    </div>
+
+                    <div className="flex-1 overflow-y-auto p-6 space-y-4" ref={adminChatBoxRef}>
+                       {!selectedThread && <div className="h-full flex items-center justify-center text-slate-400 font-medium">Soldan bir konuşma seçin.</div>}
+                       {threadMessages.map((msg) => (
+                         <div key={msg.id} className={`flex flex-col max-w-[80%] ${msg.sender_role === 'member' ? 'items-start mr-auto' : 'items-end ml-auto'}`}>
+                            <span className="text-[11px] font-bold text-slate-400 mb-1 px-1">
+                              {msg.sender_role === 'member' ? selectedThread?.member_username : selectedThread?.virtual_name}
                             </span>
-                          ))
-                          : <span className="rounded-full border border-white/25 bg-white/15 px-2.5 py-1 text-[11px] text-slate-100">Yeni tanışma</span>}
+                            <div className={`px-4 py-2.5 rounded-2xl shadow-sm ${msg.sender_role === 'member' ? 'bg-slate-100 text-slate-900 msg-tail-member' : 'bg-indigo-600 text-white msg-tail-virtual'}`}>
+                              <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">{msg.content}</p>
+                            </div>
+                            <span className="text-[10px] text-slate-400 mt-1 px-1">{formatTime(msg.created_at)}</span>
+                         </div>
+                       ))}
+                    </div>
+
+                    <div className="p-4 bg-white border-t border-slate-100 space-y-3">
+                       {!!aiSuggestions.length && (
+                         <div className="flex flex-wrap gap-2">
+                           {aiSuggestions.map((sugg) => (
+                             <button key={sugg} onClick={() => setAdminReply(sugg)} className="px-3 py-1.5 bg-fuchsia-50 text-fuchsia-700 hover:bg-fuchsia-100 text-xs font-semibold rounded-full border border-fuchsia-200 transition-colors">
+                               ✨ {sugg}
+                             </button>
+                           ))}
+                         </div>
+                       )}
+                       <div className="flex items-end gap-3">
+                         <button onClick={fetchAiSuggestions} disabled={loadingSuggestions} className="w-12 h-12 flex-shrink-0 flex items-center justify-center bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl transition-colors" title="AI Önerisi Al">
+                            🤖
+                         </button>
+                         <textarea
+                           value={adminReply}
+                           onChange={(e) => { setAdminReply(e.target.value); autoResizeTextarea(e.target, 150); }}
+                           onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendAdminReply(); } }}
+                           placeholder="Kullanıcıya yanıt yazın..."
+                           className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 resize-none min-h-[48px]"
+                         />
+                         <button onClick={sendAdminReply} className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm rounded-xl shadow-md transition-colors h-12">
+                           Gönder
+                         </button>
+                       </div>
+                    </div>
+                 </>
+               )}
+               
+               {/* Admin Center - Stats Tab */}
+               {adminTab === 'stats' && (
+                 <div className="p-6 md:p-8 overflow-y-auto">
+                    <h2 className="text-2xl font-bold mb-6 text-slate-900">Sistem İstatistikleri</h2>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                       <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200"><p className="text-sm text-slate-500 font-semibold mb-1">Toplam Mesaj</p><p className="text-3xl font-black text-slate-900">{adminStats.totalMessagesToday}</p></div>
+                       <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200"><p className="text-sm text-slate-500 font-semibold mb-1">Aktif Thread</p><p className="text-3xl font-black text-indigo-600">{adminStats.activeThreadsToday}</p></div>
+                       <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200"><p className="text-sm text-slate-500 font-semibold mb-1">Yeni Üye</p><p className="text-3xl font-black text-emerald-600">{adminStats.newMembersToday}</p></div>
+                       <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200"><p className="text-sm text-slate-500 font-semibold mb-1">Ort. Yanıt Hızı</p><p className="text-3xl font-black text-amber-600">{adminStats.avgResponseMinToday.toFixed(1)} <span className="text-sm">dk</span></p></div>
+                    </div>
+                 </div>
+               )}
+
+               {/* Admin Center - Settings Tab (MISSING CODE RESTORED HERE) */}
+               {adminTab === 'settings' && (
+                 <div className="p-6 md:p-8 overflow-y-auto space-y-8">
+                    
+                    {/* General Settings */}
+                    <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6">
+                      <h3 className="text-lg font-bold text-slate-900 mb-4">Genel Ayarlar</h3>
+                      <label className="flex items-center justify-between cursor-pointer max-w-md">
+                        <span className="font-semibold text-slate-700">Bildirim Sesi Aktif</span>
+                        <input type="checkbox" checked={notificationSoundEnabled} onChange={(e) => setNotificationSoundEnabled(e.target.checked)} className="w-5 h-5 accent-indigo-600 cursor-pointer" />
+                      </label>
+                    </div>
+
+                    {/* Create Virtual Profile */}
+                    <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6">
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-lg font-bold text-slate-900">Sanal Profil Oluştur</h3>
+                        <button onClick={fillRandomVirtualProfile} className="text-xl bg-white border border-slate-200 rounded-xl px-3 py-1.5 hover:bg-slate-100 transition-colors shadow-sm" title="Rastgele Doldur">🎲 Doldur</button>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <input placeholder="Ad (boşsa otomatik)" value={profileForm.name} onChange={(e) => setProfileForm((s) => ({ ...s, name: e.target.value }))} className="px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500" />
+                        <input placeholder="Yaş (boşsa otomatik)" type="number" value={profileForm.age} onChange={(e) => setProfileForm((s) => ({ ...s, age: e.target.value }))} className="px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500" />
+                        <input placeholder="Şehir (boşsa otomatik)" value={profileForm.city} onChange={(e) => setProfileForm((s) => ({ ...s, city: e.target.value }))} className="px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500" />
+                        <select value={profileForm.gender} onChange={(e) => setProfileForm((s) => ({ ...s, gender: e.target.value }))} className="px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500">
+                          <option value="Kadın">Kadın</option>
+                          <option value="Erkek">Erkek</option>
+                        </select>
+                        <textarea placeholder="Hobiler (virgülle ayırın)" value={profileForm.hobbies} onChange={(e) => setProfileForm((s) => ({ ...s, hobbies: e.target.value }))} className="md:col-span-2 px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500 min-h-[80px]" />
+                      </div>
+                      
+                      <div className="flex items-center gap-4 mb-6">
+                         <label className="bg-white border border-slate-200 px-4 py-2.5 rounded-xl text-sm font-bold text-slate-700 cursor-pointer hover:bg-slate-100 transition-colors shadow-sm">
+                           📸 Fotoğraf Yükle
+                           <input type="file" accept="image/*" className="hidden" onChange={async (e) => { const file = e.target.files?.[0]; if (!file) return; const url = await uploadImage(file, 'virtual-profiles'); if (url) setProfileForm((s) => ({ ...s, photo_url: url })); }} />
+                         </label>
+                         {profileForm.photo_url && <img src={profileForm.photo_url} alt="Önizleme" className="w-16 h-16 object-cover rounded-xl border border-slate-200 shadow-sm" />}
+                      </div>
+
+                      <button onClick={createVirtualProfile} className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-xl shadow-md transition-colors">
+                        Profili Kaydet (Oto Üretim Dahil)
+                      </button>
+                    </div>
+
+                    {/* Member List */}
+                    <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6">
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-lg font-bold text-slate-900">Kayıtlı Kullanıcılar</h3>
+                        <button onClick={fetchRegisteredMembers} className="text-sm bg-white border border-slate-200 px-3 py-1.5 rounded-lg shadow-sm hover:bg-slate-100 font-bold">Yenile</button>
+                      </div>
+                      {loadingMembers ? (
+                        <p className="text-slate-500 font-medium">Kullanıcılar yükleniyor...</p>
+                      ) : (
+                        <div className="space-y-3">
+                          {registeredMembers.map((member) => (
+                            <div key={member.id} className="flex items-center justify-between bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+                              <div className="min-w-0 pr-4">
+                                <p className="font-bold text-slate-900 truncate" title={member.username}>{member.username}</p>
+                                <p className="text-xs font-semibold text-slate-400 mt-1">Kayıt: {new Date(member.created_at).toLocaleString('tr-TR')}</p>
+                                <div className="flex flex-wrap items-center gap-2 mt-2 text-xs font-bold">
+                                  <span className="bg-amber-100 text-amber-700 px-2 py-0.5 rounded-md">Jeton: {member.coin_balance ?? 100}</span>
+                                  <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md">İletişim: {member.contact_phone || '-'}</span>
+                                </div>
+                              </div>
+                              <button onClick={() => { if(window.confirm('Bu kullanıcıyı tamamen silmek istediğine emin misin?')) deleteMember(member.id); }} className="px-4 py-2 bg-rose-50 text-rose-600 border border-rose-200 hover:bg-rose-100 font-bold text-sm rounded-xl transition-colors">
+                                Sil
+                              </button>
+                            </div>
+                          ))}
+                          {!registeredMembers.length && <p className="text-slate-500 font-medium bg-white p-4 rounded-xl border border-slate-200">Henüz kayıtlı kullanıcı bulunmuyor.</p>}
+                        </div>
+                      )}
+                    </div>
+
+                 </div>
+               )}
+
+               {/* Admin Center - Payments Tab (MISSING CODE RESTORED HERE) */}
+               {adminTab === 'payments' && (
+                 <div className="p-6 md:p-8 overflow-y-auto">
+                    <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6 max-w-2xl">
+                      <h3 className="text-lg font-bold text-slate-900 mb-2">Ödeme API Entegrasyonu</h3>
+                      <p className="text-sm text-slate-600 font-medium mb-6">Coin satın alma akışı belirtilen Checkout Session endpointine otomatik gider. Sistem doğrudan bu altyapıyı kullanır.</p>
+                      
+                      <div className="space-y-5">
+                        <div>
+                          <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Provider (örn: stripe, paytr)</label>
+                          <input placeholder="Provider girin" value={paymentSettings.provider} onChange={(e) => setPaymentSettings((prev) => ({ ...prev, provider: e.target.value }))} className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500" />
+                        </div>
+                        
+                        <div>
+                          <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Checkout Endpoint URL</label>
+                          <input readOnly value={DEFAULT_CHECKOUT_ENDPOINT} className="w-full px-4 py-3 bg-slate-100 border border-slate-200 rounded-xl text-sm text-slate-500 cursor-not-allowed" />
+                          <p className="text-xs text-slate-500 font-medium mt-2">Webhook callback adresi: <code className="bg-slate-200 text-slate-700 px-1.5 py-0.5 rounded">/api/webhook</code></p>
+                        </div>
+
+                        <label className="flex items-center justify-between p-4 bg-white border border-slate-200 rounded-xl cursor-pointer shadow-sm mt-4 hover:border-emerald-300 transition-colors">
+                          <span className="font-bold text-slate-700">Entegrasyon Aktif</span>
+                          <input type="checkbox" checked={paymentSettings.is_active} onChange={(e) => setPaymentSettings((prev) => ({ ...prev, is_active: e.target.checked }))} className="w-5 h-5 accent-emerald-500 cursor-pointer" />
+                        </label>
+
+                        <button onClick={savePaymentSettings} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 rounded-xl shadow-md transition-colors mt-2">
+                          Ödeme Ayarlarını Kaydet
+                        </button>
                       </div>
                     </div>
-                  </div>
+                 </div>
+               )}
+            </main>
 
-                  <div className="mt-3 grid grid-cols-[1fr_auto] gap-2">
-                    <button
-                      type="button"
-                      className="rounded-xl bg-gradient-to-r from-fuchsia-500 via-indigo-500 to-cyan-400 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-indigo-900/35 transition hover:brightness-110"
-                      onClick={() => openChatWithProfile(profile.id)}
-                    >
-                      Mesaj Gönder
-                    </button>
-                    <button
-                      type="button"
-                      className={`rounded-xl border px-3 py-2.5 text-sm transition ${liked ? 'border-pink-300/80 bg-pink-400/20 text-pink-100' : 'border-white/25 bg-white/10 text-white hover:bg-white/20'}`}
-                      onClick={() => setLikedProfiles((s) => ({ ...s, [profile.id]: !s[profile.id] }))}
-                    >
-                      {liked ? '★' : '☆'}
-                    </button>
-                  </div>
-
-                  <div className="mt-2 flex items-center justify-between gap-2 text-xs">
-                    <button
-                      type="button"
-                      className={`rounded-full border px-3 py-1.5 transition ${hearted ? 'border-rose-300/80 bg-rose-400/20 text-rose-100' : 'border-white/20 bg-white/10 text-slate-100 hover:bg-white/20'}`}
-                      onClick={() => {
-                        setHeartedProfiles((s) => ({ ...s, [profile.id]: !s[profile.id] }));
-                        sendReaction(profile.id, 'heart');
-                      }}
-                    >
-                      {hearted ? '❤️ Beğenildi' : '🤍 Kalp At'}
-                    </button>
-                    <button
-                      type="button"
-                      className={`rounded-full border px-3 py-1.5 transition ${waved ? 'border-cyan-300/80 bg-cyan-400/20 text-cyan-100' : 'border-white/20 bg-white/10 text-slate-100 hover:bg-white/20'}`}
-                      onClick={() => {
-                        setWavedProfiles((s) => ({ ...s, [profile.id]: !s[profile.id] }));
-                        sendReaction(profile.id, 'wave');
-                      }}
-                    >
-                      {waved ? '👋 Selamlandı' : '👋 Selam Gönder'}
-                    </button>
-                  </div>
-                </article>
-              );
-            })}
-          </section>
-
-          {!discoverProfiles.length && (
-            <section className="relative rounded-3xl border border-dashed border-white/25 bg-white/5 p-10 text-center">
-              <h3 className="text-xl font-semibold">Bu filtrelerle profil bulunamadı</h3>
-              <p className="mt-2 text-sm text-slate-300">Arama kelimesini temizleyip şehir/cinsiyet filtrelerini değiştirerek tekrar dene.</p>
-            </section>
-          )}
-        </main>
-      ) : userView === 'profile' ? (
-        <main className="mx-auto grid max-w-4xl gap-5 rounded-[2rem] border border-slate-200 bg-white p-5 shadow-lg md:grid-cols-[320px_1fr] md:p-7">
-          <aside className="rounded-3xl border border-slate-200 bg-slate-50 p-5">
-            <h3 className="text-xl font-semibold text-slate-900">Profilim</h3>
-            <p className="mt-2 text-sm text-slate-600">Profilini güncelle, fotoğrafını değiştir ve diğer kullanıcılara nasıl görüneceğini ayarla.</p>
-            <div className="mt-4 space-y-2 text-sm text-slate-700">
-              <p><strong>Kullanıcı:</strong> {memberSession?.username || 'Üye'}</p>
-              <p><strong>Durum:</strong> {memberProfile.status_emoji}</p>
-              <p><strong>Şehir:</strong> {memberProfile.city || '-'}</p>
-            </div>
-          </aside>
-
-          <section className="rounded-3xl border border-slate-200 bg-white p-5">
-            <h4 className="text-lg font-semibold text-slate-900">Profil düzenleme</h4>
-            {memberProfile.photo_url && <img src={memberProfile.photo_url} alt="profil" className="profile-photo mt-4" />}
-
-            <div className="mt-4 grid gap-3">
-              <input
-                id="member-photo-upload"
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={async (e) => {
-                  const file = e.target.files?.[0];
-                  if (!file) return;
-                  const url = await uploadImage(file, 'members');
-                  if (url) setMemberProfile((s) => ({ ...s, photo_url: url }));
-                }}
-              />
-              <label
-                htmlFor="member-photo-upload"
-                className="inline-flex cursor-pointer items-center justify-center rounded-xl border border-slate-200 bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-800 transition hover:bg-slate-200"
-              >
-                Resim Yükle
-              </label>
-              <input
-                placeholder="Yaş"
-                type="number"
-                value={memberProfile.age}
-                onChange={(e) => setMemberProfile((s) => ({ ...s, age: e.target.value }))}
-              />
-              <input
-                placeholder="Şehir"
-                value={memberProfile.city}
-                onChange={(e) => setMemberProfile((s) => ({ ...s, city: e.target.value }))}
-              />
-              <textarea
-                placeholder="Hobiler"
-                value={memberProfile.hobbies}
-                onChange={(e) => setMemberProfile((s) => ({ ...s, hobbies: e.target.value }))}
-              />
-              <select value={memberProfile.status_emoji} onChange={(e) => setMemberProfile((s) => ({ ...s, status_emoji: e.target.value }))}>
-                <option value="🙂">🙂 Normal</option>
-                <option value="☕">☕ Kahve içiyor</option>
-                <option value="💃">💃 Dans ediyor</option>
-                <option value="🎧">🎧 Müzik dinliyor</option>
-                <option value="🌙">🌙 Dinleniyor</option>
-              </select>
-              <button onClick={saveOwnProfile}>Profili Kaydet</button>
-            </div>
-          </section>
-        </main>
-      ) : userView === 'coins' ? (
-        <main className="mx-auto grid max-w-3xl gap-4 rounded-[2rem] border border-amber-200 bg-white p-5 shadow-lg md:p-7">
-          <section className="rounded-3xl border border-amber-200 bg-amber-50 p-5">
-            <h3 className="text-2xl font-bold text-amber-900">Jeton Satın Al</h3>
-            <p className="mt-2 text-sm text-amber-800">Mesaj göndermek için jeton gerekir. Her mesaj/etkileşim {COIN_COST_PER_MESSAGE} jeton harcar.</p>
-            <p className="mt-2 text-sm text-amber-900"><strong>Mevcut jeton:</strong> {memberProfile.coin_balance ?? 0}</p>
-          </section>
-
-          <section className="rounded-3xl border border-slate-200 bg-white p-5">
-            <h4 className="text-lg font-semibold text-slate-900">Canlı Ödeme</h4>
-            <p className="mt-1 text-sm text-slate-600">
-              Sağlayıcı: <strong>{paymentSettings.provider || '-'}</strong> · Durum: <strong>{paymentSettings.is_active ? 'Aktif' : 'Pasif'}</strong>
-            </p>
-            <p className="mt-1 break-all text-xs text-slate-500">Checkout URL: {DEFAULT_CHECKOUT_ENDPOINT}</p>
-            <div className="mt-3 grid gap-2 sm:grid-cols-3">
-              {[500, 1200, 2500].map((coinPack) => (
-                <button
-                  key={coinPack}
-                  type="button"
-                  disabled={coinCheckoutLoading}
-                  onClick={() => requestCoinCheckout(coinPack)}
-                  className="rounded-xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {coinCheckoutLoading ? 'İşleniyor…' : `${coinPack} Jeton Al`}
-                </button>
-              ))}
-            </div>
-          </section>
-
-          <section className="rounded-3xl border border-slate-200 bg-white p-5">
-            <h4 className="text-lg font-semibold text-slate-900">Test Satın Alma</h4>
-            <p className="mt-1 text-sm text-slate-600">
-              Test için iletişim numarasını <strong>{TEST_CONTACT_NUMBER}</strong> girip gönder. Sistem otomatik <strong>5000</strong> jeton yükler.
-            </p>
-            <div className="mt-3 grid gap-3">
-              <input
-                placeholder="İletişim numarası"
-                value={memberProfile.contact_phone || ''}
-                onChange={(e) => setMemberProfile((prev) => ({ ...prev, contact_phone: e.target.value }))}
-              />
-              <button type="button" onClick={handleCoinPurchaseTest}>Numarayı Gönder ve 5000 Jeton Yükle</button>
-            </div>
-          </section>
-        </main>
-      ) : (
-        <main className="dashboard user-grid user-dashboard user-chat-layout compact-shell">
-          <aside className="card">
-            <h3>Sohbetler</h3>
-            <div className="profile-list" ref={profileListRef}>
-              {sortedProfiles.map((profile) => (
-                <button key={profile.id} onClick={() => setSelectedProfileId(profile.id)} className={`profile-item ${selectedProfileId === profile.id ? 'active' : ''} ${unreadByProfile[profile.id] > 0 ? 'has-unread' : ''}`}>
-                  <span className={`avatar-wrap ${unreadByProfile[profile.id] > 0 ? 'ringing' : ''}`}>
-                    {profile.photo_url ? <img src={profile.photo_url} alt={profile.name} className="avatar" /> : <span className="avatar-fallback">{profile.name?.slice(0,1)}</span>}
-                  </span>
-                  <span className="profile-main">
-                    <strong>{profile.name}</strong>
-                    <small>{profile.city || 'Türkiye'}</small>
-                  </span>
-                  <span className={`online-dot ${onlineProfiles[profile.id] ? 'on' : ''}`} />
-                  {unreadByProfile[profile.id] > 0 && <small>Yeni ({unreadByProfile[profile.id]})</small>}
-                </button>
-              ))}
-            </div>
-            {selectedProfile && (
-              <div className="meta">
-                {selectedProfile.photo_url && <img src={selectedProfile.photo_url} alt={selectedProfile.name} className="profile-photo" />}
-                <p><strong>Yaş:</strong> {selectedProfile.age}</p>
-                <p><strong>Cinsiyet:</strong> {selectedProfile.gender}</p>
-                <p><strong>Şehir:</strong> {selectedProfile.city || '-'}</p>
-                <p><strong>Hobiler:</strong> {selectedProfile.hobbies || '-'}</p>
-                <p><strong>Ortak ilgi skoru:</strong> %{interestScore}</p>
-              </div>
+            {/* Admin Right Sidebar */}
+            {adminDrawerOpen && adminTab === 'chat' && (
+              <aside className="w-full lg:w-80 flex flex-col gap-4 overflow-y-auto">
+                 <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm flex flex-col items-center text-center">
+                    <div className="w-24 h-24 rounded-full bg-slate-200 overflow-hidden mb-3 border-4 border-white shadow-md">
+                      {selectedThreadProfile?.photo_url ? <img src={selectedThreadProfile.photo_url} className="w-full h-full object-cover" /> : <div className="w-full h-full bg-indigo-100" />}
+                    </div>
+                    <h3 className="text-lg font-bold text-slate-900">{selectedThreadProfile?.name || '-'}</h3>
+                    <p className="text-sm text-slate-500 font-medium">{selectedThreadProfile?.age} • {selectedThreadProfile?.city}</p>
+                 </div>
+                 
+                 <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm">
+                    <h4 className="text-sm font-bold text-slate-900 mb-2">Hızlı Notlar (Quick Facts)</h4>
+                    <textarea value={quickFactsText} onChange={(e)=>setQuickFactsText(e.target.value)} placeholder="Kullanıcı sınırları, özel istekleri..." className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm focus:outline-none min-h-[100px]" />
+                    <button onClick={saveQuickFacts} className="w-full mt-2 bg-slate-900 text-white text-xs font-bold py-2 rounded-lg">Notları Kaydet</button>
+                 </div>
+              </aside>
             )}
-          </aside>
-          <section className="card">
-            <h3>Sohbet</h3>
-            <div className="chat-box" ref={chatBoxRef}>
-              {messages.map((msg) => {
-                const audioUrl = getAudioUrl(msg.content);
-                return (
-                  <div key={msg.id} className={`msg ${msg.sender_role}`}>
-                    <span>{msg.sender_role === 'member' ? 'Sen' : selectedProfile?.name}</span>
-                    {audioUrl ? <audio controls src={audioUrl} className="audio-player" /> : <p>{msg.content}</p>}
-                    <small>
-                      {formatTime(msg.created_at)}
-                      {msg.sender_role === 'member' ? <span className={`ticks ${msg.seen_by_admin ? 'seen' : ''}`} title={msg.seen_by_admin_at ? `Görüldü: ${formatTime(msg.seen_by_admin_at)}` : `Teslim: ${formatTime(msg.created_at)}`}>✓✓</span> : ''}
-                    </small>
-                  </div>
-                );
-              })}
-            </div>
-            {typingLabel && <div className="typing-indicator">{typingLabel}</div>}
-            <div className="row">
-              <textarea
-                className="grow-textarea"
-                placeholder="Mesaj yaz"
-                value={newMessage}
-                onChange={(e) => {
-                  setNewMessage(e.target.value);
-                  autoResizeTextarea(e.target, 220);
-                }}
-                onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
-              />
-              <button onClick={sendMessage}>Gönder</button>
-            </div>
-          </section>
-          <section className="card">
-            <h3>Kendi Profilin</h3>
-            {memberProfile.photo_url && <img src={memberProfile.photo_url} alt="profil" className="profile-photo" />}
-            <p><strong>Durum:</strong> {memberProfile.status_emoji}</p>
-            <p><strong>Yaş:</strong> {memberProfile.age || '-'}</p>
-            <p><strong>Şehir:</strong> {memberProfile.city || '-'}</p>
-            <p><strong>Hobiler:</strong> {memberProfile.hobbies || '-'}</p>
-            <button type="button" onClick={() => setUserView('profile')}>Profilimi Düzenle</button>
-          </section>
-        </main>
-      )}
 
+          </div>
+        )
+
+        /* ======================= USER SCREEN: DISCOVER ======================= */
+        : userView === 'discover' ? (
+          <div className="space-y-6">
+            <div className="bg-white rounded-[2rem] p-6 md:p-8 border border-slate-200 shadow-sm">
+              <h2 className="text-3xl font-black text-slate-900 tracking-tight mb-2">Yeni Yüzler Keşfet ✨</h2>
+              <p className="text-slate-500 font-medium max-w-2xl">Filtreleri kullanarak kriterlerine uygun profilleri bul ve hemen etkileşime geç.</p>
+              
+              <div className="mt-8 flex flex-col md:flex-row items-center gap-4 bg-slate-50 p-2 rounded-2xl border border-slate-100">
+                <input value={profileSearch} onChange={(e)=>setProfileSearch(e.target.value)} placeholder="🔍 İsim veya hobi ara..." className="w-full md:w-auto flex-1 bg-white border border-slate-200 px-4 py-3 rounded-xl text-sm font-medium outline-none focus:border-fuchsia-400" />
+                <select value={genderFilter} onChange={(e)=>setGenderFilter(e.target.value)} className="w-full md:w-40 bg-white border border-slate-200 px-4 py-3 rounded-xl text-sm font-medium outline-none focus:border-fuchsia-400">
+                  <option value="all">Tüm Cinsiyetler</option>
+                  <option value="Kadın">Kadın</option>
+                  <option value="Erkek">Erkek</option>
+                </select>
+                <input value={cityFilter} onChange={(e)=>setCityFilter(e.target.value)} placeholder="📍 Şehir..." className="w-full md:w-48 bg-white border border-slate-200 px-4 py-3 rounded-xl text-sm font-medium outline-none focus:border-fuchsia-400" />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+              {discoverProfiles.map(profile => (
+                <div key={profile.id} className="group bg-white rounded-3xl border border-slate-200 shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden flex flex-col">
+                  <div className="relative h-72 overflow-hidden bg-slate-100">
+                    {profile.photo_url ? (
+                      <img src={profile.photo_url} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-5xl font-black text-slate-300">{profile.name.slice(0,1)}</div>
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-transparent to-transparent" />
+                    <div className="absolute bottom-4 left-4 right-4">
+                      <div className="flex items-center gap-2 mb-1">
+                        <h3 className="text-xl font-bold text-white leading-tight">{profile.name}, {profile.age}</h3>
+                        {effectiveOnlineProfiles[profile.id] && <span className="w-2.5 h-2.5 bg-emerald-400 border border-white rounded-full" title="Çevrimiçi" />}
+                      </div>
+                      <p className="text-xs font-semibold text-slate-300 flex items-center gap-1">📍 {profile.city || 'Belirtilmemiş'}</p>
+                    </div>
+                  </div>
+                  <div className="p-4 flex flex-col flex-1">
+                    <div className="flex flex-wrap gap-1.5 mb-4">
+                      {profile.hobbies.split(',').slice(0,3).map(h => h.trim() && <span key={h} className="text-[10px] font-bold px-2 py-1 bg-slate-100 text-slate-600 rounded-md">{h}</span>)}
+                    </div>
+                    <div className="mt-auto grid grid-cols-3 gap-2">
+                       <button onClick={() => { setHeartedProfiles(s => ({...s, [profile.id]: true})); sendReaction(profile.id, 'heart'); }} className={`py-2.5 rounded-xl text-sm font-bold transition-colors ${heartedProfiles[profile.id] ? 'bg-rose-100 text-rose-600' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'}`}>❤️</button>
+                       <button onClick={() => { setWavedProfiles(s => ({...s, [profile.id]: true})); sendReaction(profile.id, 'wave'); }} className={`py-2.5 rounded-xl text-sm font-bold transition-colors ${wavedProfiles[profile.id] ? 'bg-cyan-100 text-cyan-600' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'}`}>👋</button>
+                       <button onClick={() => openChatWithProfile(profile.id)} className="py-2.5 rounded-xl text-sm font-bold bg-slate-900 hover:bg-slate-800 text-white shadow-md">Mesaj</button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )
+
+        /* ======================= USER SCREEN: CHAT ======================= */
+        : userView === 'chat' ? (
+          <div className="flex-1 flex flex-col md:flex-row gap-6 bg-white rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden h-[calc(100vh-140px)]">
+             {/* Contact List */}
+             <div className="w-full md:w-80 border-r border-slate-100 flex flex-col bg-slate-50/50">
+               <div className="p-5 border-b border-slate-100">
+                 <h3 className="text-xl font-black text-slate-900">Mesajlarım</h3>
+               </div>
+               <div className="flex-1 overflow-y-auto p-3 space-y-2" ref={profileListRef}>
+                 {sortedProfiles.map(p => (
+                   <button key={p.id} onClick={() => setSelectedProfileId(p.id)} className={`w-full flex items-center gap-3 p-3 rounded-2xl transition-all ${selectedProfileId === p.id ? 'bg-white shadow-sm border border-slate-200' : 'hover:bg-slate-100 border border-transparent'}`}>
+                     <div className="relative">
+                       <div className="w-12 h-12 rounded-full overflow-hidden bg-slate-200">
+                         {p.photo_url ? <img src={p.photo_url} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center font-bold text-slate-400">{p.name.slice(0,1)}</div>}
+                       </div>
+                       {effectiveOnlineProfiles[p.id] && <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-emerald-500 border-2 border-white rounded-full" />}
+                     </div>
+                     <div className="flex-1 text-left min-w-0">
+                       <p className="font-bold text-slate-900 truncate">{p.name}</p>
+                       <p className="text-xs text-slate-500 truncate">{p.city}</p>
+                     </div>
+                     {unreadByProfile[p.id] > 0 && <span className="w-5 h-5 bg-rose-500 text-white text-[10px] font-bold flex items-center justify-center rounded-full">{unreadByProfile[p.id]}</span>}
+                   </button>
+                 ))}
+               </div>
+             </div>
+
+             {/* Active Chat */}
+             <div className="flex-1 flex flex-col bg-white relative">
+                {!selectedProfile ? (
+                  <div className="flex-1 flex flex-col items-center justify-center text-slate-400">
+                    <span className="text-4xl mb-4">💬</span>
+                    <p className="font-medium">Sohbet etmek için bir profil seçin.</p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="px-6 py-4 border-b border-slate-100 flex items-center gap-4 bg-white z-10 shadow-sm">
+                      <div className="w-10 h-10 rounded-full overflow-hidden bg-slate-200">
+                         {selectedProfile.photo_url && <img src={selectedProfile.photo_url} className="w-full h-full object-cover" />}
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-slate-900 leading-tight">{selectedProfile.name}</h3>
+                        <p className="text-xs font-semibold text-emerald-500">{effectiveOnlineProfiles[selectedProfile.id] ? 'Çevrimiçi' : 'Çevrimdışı'}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-slate-50/50" ref={chatBoxRef}>
+                      {messages.map(msg => (
+                        <div key={msg.id} className={`flex flex-col max-w-[75%] ${msg.sender_role === 'member' ? 'items-end ml-auto' : 'items-start mr-auto'}`}>
+                          <div className={`px-4 py-2.5 rounded-2xl shadow-sm ${msg.sender_role === 'member' ? 'bg-fuchsia-500 text-white msg-tail-member' : 'bg-white border border-slate-200 text-slate-800 msg-tail-virtual'}`}>
+                            <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+                          </div>
+                          <div className="flex items-center gap-1 mt-1 px-1">
+                            <span className="text-[10px] text-slate-400 font-medium">{formatTime(msg.created_at)}</span>
+                            {msg.sender_role === 'member' && <span className={`text-[10px] font-bold ${msg.seen_by_admin ? 'text-blue-500' : 'text-slate-300'}`}>✓✓</span>}
+                          </div>
+                        </div>
+                      ))}
+                      {typingLabel && <div className="text-xs font-bold text-slate-400 ml-2 animate-pulse">{typingLabel}</div>}
+                    </div>
+
+                    <div className="p-4 bg-white border-t border-slate-100">
+                      <div className="flex items-end gap-3 bg-slate-50 border border-slate-200 rounded-2xl p-2 focus-within:border-fuchsia-400 focus-within:ring-4 focus-within:ring-fuchsia-500/10 transition-all">
+                        <textarea
+                          value={newMessage}
+                          onChange={(e) => { setNewMessage(e.target.value); autoResizeTextarea(e.target, 120); }}
+                          onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
+                          placeholder="Mesajınızı yazın..."
+                          className="flex-1 bg-transparent px-3 py-2 text-sm focus:outline-none resize-none min-h-[40px] max-h-[120px]"
+                        />
+                        <button onClick={sendMessage} className="w-10 h-10 flex items-center justify-center bg-slate-900 hover:bg-slate-800 text-white rounded-xl shadow-md transition-transform active:scale-95">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+                        </button>
+                      </div>
+                    </div>
+                  </>
+                )}
+             </div>
+          </div>
+        )
+
+        /* ======================= USER SCREEN: PROFILE & COINS ======================= */
+        : (
+          <div className="max-w-2xl mx-auto w-full space-y-6">
+            <div className="bg-white rounded-[2rem] p-8 border border-slate-200 shadow-sm">
+               <h2 className="text-2xl font-black text-slate-900 mb-6">{userView === 'profile' ? 'Profil Ayarları' : 'Jeton Cüzdanı'}</h2>
+               {userView === 'profile' ? (
+                 <div className="space-y-4">
+                   <div className="flex items-center gap-6 mb-6">
+                     <div className="w-24 h-24 rounded-full bg-slate-100 border border-slate-200 overflow-hidden">
+                       {memberProfile.photo_url && <img src={memberProfile.photo_url} className="w-full h-full object-cover" />}
+                     </div>
+                     <label className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-bold rounded-xl cursor-pointer transition-colors">
+                       Fotoğraf Değiştir
+                       <input type="file" accept="image/*" className="hidden" onChange={async (e) => { const f = e.target.files?.[0]; if(f){ const url = await uploadImage(f, 'members'); if(url) setMemberProfile(s=>({...s, photo_url:url})); } }} />
+                     </label>
+                   </div>
+                   <input value={memberProfile.age} onChange={e=>setMemberProfile(s=>({...s, age:e.target.value}))} placeholder="Yaşınız" type="number" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-fuchsia-400" />
+                   <input value={memberProfile.city} onChange={e=>setMemberProfile(s=>({...s, city:e.target.value}))} placeholder="Yaşadığınız Şehir" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-fuchsia-400" />
+                   <textarea value={memberProfile.hobbies} onChange={e=>setMemberProfile(s=>({...s, hobbies:e.target.value}))} placeholder="Hobileriniz (virgülle ayırın)" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-fuchsia-400 min-h-[100px]" />
+                   <button onClick={saveOwnProfile} className="w-full py-4 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl shadow-md mt-4">Değişiklikleri Kaydet</button>
+                 </div>
+               ) : (
+                 <div className="space-y-6">
+                   <div className="bg-amber-50 border border-amber-200 p-6 rounded-2xl flex items-center justify-between">
+                     <div>
+                       <p className="text-sm font-bold text-amber-700 uppercase tracking-wider">Mevcut Bakiye</p>
+                       <p className="text-4xl font-black text-amber-900">{memberProfile.coin_balance ?? 0} <span className="text-lg font-bold">Jeton</span></p>
+                     </div>
+                     <span className="text-5xl">🪙</span>
+                   </div>
+                   <div className="grid grid-cols-3 gap-4">
+                     {[500, 1200, 2500].map(amt => (
+                       <button key={amt} onClick={() => requestCoinCheckout(amt)} disabled={coinCheckoutLoading} className="py-4 bg-white border border-slate-200 hover:border-emerald-400 rounded-2xl font-bold text-slate-800 flex flex-col items-center justify-center gap-1 shadow-sm transition-all active:scale-95 disabled:opacity-50">
+                         <span className="text-emerald-500 text-xl">💎</span>
+                         <span>{amt} Jeton</span>
+                       </button>
+                     ))}
+                   </div>
+                   
+                   {/* TEST PURCHASE BUTTON */}
+                   <div className="mt-8 pt-6 border-t border-slate-100">
+                     <p className="text-xs text-slate-400 font-bold uppercase mb-3">Test Yükleme (Geliştirici Modu)</p>
+                     <div className="flex gap-2">
+                       <input value={memberProfile.contact_phone || ''} onChange={(e) => setMemberProfile((prev) => ({ ...prev, contact_phone: e.target.value }))} placeholder={`Telefon (${TEST_CONTACT_NUMBER})`} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-fuchsia-400" />
+                       <button onClick={handleCoinPurchaseTest} className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold rounded-xl whitespace-nowrap text-sm">5000 Yükle</button>
+                     </div>
+                   </div>
+
+                 </div>
+               )}
+            </div>
+          </div>
+        )}
+      </main>
+
+      {/* 🚀 OUT OF COINS MODAL */}
       {coinPurchaseModalOpen && !isAdmin && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/55 p-4">
-          <div className="w-full max-w-md rounded-3xl border border-amber-200 bg-white p-6 shadow-2xl">
-            <h3 className="text-xl font-bold text-slate-900">Jetonun Bitti 😕</h3>
-            <p className="mt-2 text-sm text-slate-600">
-              Mesaj göndermeye devam etmek için jeton satın alman gerekiyor. Bir mesaj/etkileşim {COIN_COST_PER_MESSAGE} jeton harcar.
-            </p>
-            <div className="mt-4 flex gap-2">
-              <button
-                type="button"
-                className="rounded-xl bg-amber-500 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-600"
-                onClick={() => {
-                  setZeroCoinPromptDismissed(false);
-                  setCoinPurchaseModalOpen(false);
-                  setUserView('coins');
-                }}
-              >
-                Coin Satın Al
-              </button>
-              <button
-                type="button"
-                className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100"
-                onClick={() => {
-                  setZeroCoinPromptDismissed(true);
-                  setCoinPurchaseModalOpen(false);
-                }}
-              >
-                Kapat
-              </button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+          <div className="bg-white p-8 rounded-[2rem] max-w-sm w-full shadow-2xl border border-slate-100">
+            <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center text-2xl mb-4">😮</div>
+            <h3 className="text-2xl font-black text-slate-900 mb-2">Jetonun Bitti!</h3>
+            <p className="text-sm font-medium text-slate-500 mb-6">Sohbete veya etkileşime devam edebilmek için cüzdanına jeton eklemen gerekiyor.</p>
+            <div className="flex flex-col gap-3">
+              <button onClick={() => { setZeroCoinPromptDismissed(false); setCoinPurchaseModalOpen(false); setUserView('coins'); }} className="w-full py-3.5 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl shadow-md">Jeton Satın Al</button>
+              <button onClick={() => { setZeroCoinPromptDismissed(true); setCoinPurchaseModalOpen(false); }} className="w-full py-3.5 bg-slate-50 hover:bg-slate-100 text-slate-600 font-bold rounded-xl border border-slate-200">Kapat</button>
             </div>
           </div>
         </div>
       )}
 
-      {status && <p className="status">{status}</p>}
     </div>
   );
 }
